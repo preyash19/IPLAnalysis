@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IPL Head-to-Head & Venue Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;500;600&display=swap');
+:root{
+  --bg:#07071A;--panel:#0F0F2A;--card:#141432;--border:rgba(255,255,255,0.07);
+  --gold:#FFD700;--teal:#00E5FF;--green:#00FF88;--red:#FF5252;
+  --purple:#BB86FC;--orange:#FF6B35;--text:#E0E0FF;--muted:#7070AA;
+  --pp:#4ECDC4;--mid:#FFE66D;--death:#FF6B6B;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
+
+/* ── TOPBAR ── */
+.topbar{background:linear-gradient(90deg,#0a0a22,#1a0a35,#0a1528);
+  border-bottom:2px solid var(--gold);padding:0 28px;height:58px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
+.logo{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;
+  background:linear-gradient(90deg,var(--gold),var(--teal));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.nav{display:flex;gap:4px;}
+.nav-btn{padding:7px 18px;border-radius:8px;border:1px solid transparent;
+  background:none;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;}
+.nav-btn:hover{color:var(--text);}
+.nav-btn.active{background:linear-gradient(135deg,rgba(255,215,0,.12),rgba(0,229,255,.07));
+  border-color:var(--gold);color:var(--gold);}
+.topbar-meta{font-size:12px;color:var(--muted);}
+
+/* ── PAGES ── */
+.page{display:none;max-width:1260px;margin:0 auto;padding:28px 24px;}
+.page.active{display:block;}
+
+/* ── SHARED ── */
+.sec-title{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;
+  color:#fff;margin-bottom:4px;}
+.sec-sub{font-size:13px;color:var(--muted);margin-bottom:22px;}
+.divider{height:1px;background:var(--border);margin:28px 0;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:18px;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+
+/* ── KPI ── */
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  padding:18px 16px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.kpi.g::before{background:linear-gradient(90deg,var(--gold),var(--orange));}
+.kpi.t::before{background:linear-gradient(90deg,var(--teal),#0055ff);}
+.kpi.gr::before{background:linear-gradient(90deg,var(--green),#00aa55);}
+.kpi.r::before{background:linear-gradient(90deg,var(--red),#aa0000);}
+.kpi.p::before{background:linear-gradient(90deg,var(--purple),#6600cc);}
+.kpi-val{font-family:'Rajdhani',sans-serif;font-size:30px;font-weight:700;line-height:1;}++
+.kpi.g .kpi-val{color:var(--gold);}
+.kpi.t .kpi-val{color:var(--teal);}
+.kpi.gr .kpi-val{color:var(--green);}
+.kpi.r .kpi-val{color:var(--red);}
+.kpi.p .kpi-val{color:var(--purple);}
+.kpi-lbl{font-size:12px;color:var(--muted);margin-top:5px;}
+.kpi-icon{position:absolute;top:14px;right:14px;font-size:20px;opacity:.22;}
+
+/* ── CHART CARD ── */
+.chart-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px;}
+.chart-card.full{grid-column:1/-1;}
+.ct{font-size:14px;font-weight:600;color:#fff;margin-bottom:3px;}
+.cs{font-size:12px;color:var(--muted);margin-bottom:14px;}
+
+/* ── TEAM PICKERS ── */
+.picker-card{background:linear-gradient(135deg,var(--panel),var(--card));
+  border:1px solid rgba(255,215,0,0.22);border-radius:18px;padding:28px 32px;margin-bottom:22px;}
+.pickers{display:grid;grid-template-columns:1fr 56px 1fr;gap:14px;align-items:center;}
+.vs-badge{font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:700;
+  color:var(--gold);text-align:center;}
+.picker-col{display:flex;flex-direction:column;gap:7px;}
+.picker-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;}
+select{width:100%;padding:11px 38px 11px 14px;background:var(--card);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);font-size:14px;cursor:pointer;
+  outline:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%237070AA' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 13px center;}
+select:focus{border-color:var(--gold);}
+option{background:#141432;}
+
+/* ── H2H HERO ── */
+.h2h-hero{background:var(--panel);border:1px solid var(--border);
+  border-radius:16px;padding:28px 32px;margin-bottom:18px;}
+.h2h-names{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-bottom:18px;}
+.hn-a{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;
+  color:var(--teal);text-align:left;}
+.hn-b{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;
+  color:var(--orange);text-align:right;}
+.hn-vs{font-family:'Rajdhani',sans-serif;font-size:16px;color:var(--muted);text-align:center;}
+.win-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-bottom:14px;}
+.win-num{font-family:'Rajdhani',sans-serif;font-size:56px;font-weight:700;line-height:1;}
+.win-num.a{color:var(--teal);}
+.win-num.b{color:var(--orange);}
+.win-mid{text-align:center;}
+.total-lbl{font-size:12px;color:var(--muted);}
+.total-val{font-family:'Rajdhani',sans-serif;font-size:20px;color:var(--gold);}
+/* progress bar */
+.bar-track{height:10px;background:rgba(255,255,255,0.06);border-radius:5px;
+  overflow:hidden;display:flex;margin-bottom:8px;}
+.bar-a{height:100%;background:linear-gradient(90deg,var(--teal),#00aacc);transition:width .8s ease;}
+.bar-b{height:100%;background:linear-gradient(90deg,#cc5500,var(--orange));transition:width .8s ease;}
+.bar-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);}
+.dominant{display:inline-block;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:600;margin-top:10px;}
+.dominant.a{background:rgba(0,229,255,0.13);color:var(--teal);}
+.dominant.b{background:rgba(255,107,53,0.13);color:var(--orange);}
+.dominant.tie{background:rgba(255,215,0,0.13);color:var(--gold);}
+.seasons-note{font-size:12px;color:var(--muted);margin-top:8px;}
+
+/* ── STAT COMPARISON CARDS ── */
+.stat-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.stat-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px;}
+.stat-compare{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px;}
+.stat-val{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;}
+.sv-a{color:var(--teal);}
+.sv-b{color:var(--orange);}
+.stat-bar{height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;}
+.stat-bar-inner{height:100%;border-radius:3px;}
+
+/* ── RADAR ── */
+.radar-wrap{position:relative;height:300px;display:flex;align-items:center;justify-content:center;}
+
+/* ── INSIGHT BOX ── */
+.insight-box{background:linear-gradient(135deg,rgba(255,215,0,.07),rgba(0,229,255,.04));
+  border:1px solid rgba(255,215,0,.2);border-radius:12px;padding:15px 18px;margin-bottom:18px;}
+.insight-box p{font-size:13px;line-height:1.8;color:var(--text);}
+.insight-box strong{color:var(--gold);}
+
+/* ── PHASE TABS ── */
+.ptabs{display:flex;gap:8px;margin-bottom:14px;}
+.ptab{padding:7px 16px;border-radius:8px;border:1px solid var(--border);
+  background:var(--card);color:var(--muted);font-size:13px;cursor:pointer;transition:all .2s;}
+.ptab:hover{color:var(--text);}
+.ptab.active.pp{border-color:var(--pp);color:var(--pp);background:rgba(78,205,196,.1);}
+.ptab.active.mid{border-color:var(--mid);color:var(--mid);background:rgba(255,230,109,.1);}
+.ptab.active.death{border-color:var(--death);color:var(--death);background:rgba(255,107,107,.1);}
+
+/* ── PLACEHOLDER ── */
+.placeholder{text-align:center;padding:70px 20px;color:var(--muted);}
+.placeholder-emoji{font-size:48px;margin-bottom:16px;opacity:.3;}
+.placeholder h3{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:500;}
+.placeholder p{font-size:13px;margin-top:8px;}
+
+/* ── VENUE SELECTOR ── */
+.venue-sel-card{background:var(--panel);border:1px solid rgba(255,215,0,.2);
+  border-radius:18px;padding:24px 28px;margin-bottom:22px;}
+.venue-select-row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;}
+.venue-select-wrap{display:flex;flex-direction:column;gap:7px;flex:1;min-width:220px;}
+
+/* ── VENUE KPI ROW ── */
+.venue-hero{background:var(--panel);border:1px solid var(--border);
+  border-radius:16px;padding:22px 28px;margin-bottom:18px;}
+.venue-title{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:var(--gold);margin-bottom:4px;}
+.venue-subtitle{font-size:13px;color:var(--muted);margin-bottom:18px;}
+.venue-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+.vkpi{text-align:center;background:var(--card);border-radius:10px;padding:14px 10px;}
+.vkpi-val{font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:700;line-height:1;}
+.vkpi-lbl{font-size:11px;color:var(--muted);margin-top:4px;}
+
+/* ── VENUE NATURE BADGE ── */
+.nature-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;
+  border-radius:20px;font-size:13px;font-weight:600;margin-left:10px;}
+.nb-bat{background:rgba(255,107,53,.15);color:var(--orange);}
+.nb-bowl{background:rgba(0,229,255,.13);color:var(--teal);}
+.nb-neutral{background:rgba(255,215,0,.13);color:var(--gold);}
+.nb-chase{background:rgba(0,255,136,.13);color:var(--green);}
+
+/* ── TABLE ── */
+.tbl-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.tbl-hdr{padding:14px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;}
+.tbl-hdr-title{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:#fff;}
+table{width:100%;border-collapse:collapse;}
+thead th{padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;
+  color:var(--gold);background:rgba(255,215,0,.05);text-align:left;font-weight:600;}
+tbody tr{border-top:1px solid var(--border);cursor:pointer;transition:background .15s;}
+tbody tr:hover{background:rgba(255,255,255,.025);}
+tbody td{padding:10px 14px;font-size:13px;}
+.tr{text-align:right;font-family:'Rajdhani',sans-serif;font-size:14px;}
+.chase-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:4px;}
+.cb-bat{background:var(--orange);border-radius:4px 0 0 4px;}
+.cb-chase{background:var(--green);border-radius:0 4px 4px 0;}
+
+/* RANK badge */
+.rk{display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:50%;font-size:10px;font-weight:700;
+  margin-right:6px;color:#000;}
+.rk1{background:var(--gold);}
+.rk2{background:#C0C0C0;}
+.rk3{background:#CD7F32;}
+.rk-n{background:var(--card);color:var(--muted);border:1px solid var(--border);}
+
+@media(max-width:820px){
+  .pickers{grid-template-columns:1fr;}.vs-badge{display:none;}
+  .grid2,.grid3,.grid4{grid-template-columns:1fr 1fr;}
+  .venue-kpis{grid-template-columns:repeat(3,1fr);}
+}
+@media(max-width:560px){
+  .grid2,.grid3,.grid4{grid-template-columns:1fr;}
+  .venue-kpis{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">🏏 IPL Analytics</div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="showPage('h2h',this)">⚔️ Head-to-Head</button>
+    <button class="nav-btn" onclick="showPage('venue',this)">🏟️ Venue Analysis</button>
+    <button class="nav-btn" onclick="window.location.href='IPL_Dashboard.html'">📊 Main Dashboard</button>
+  </div>
+  <div class="topbar-meta">1,194 matches · 19 seasons · Real data</div>
+</div>
+
+<!-- ════════════════════════════════════════
+     PAGE: HEAD TO HEAD
+════════════════════════════════════════ -->
+<div class="page active" id="page-h2h">
+
+  <div style="margin-bottom:20px;">
+    <div class="sec-title">⚔️ Head-to-Head Team Comparison</div>
+    <div class="sec-sub">Select any two franchises to compare their all-time rivalry, batting style, and phase dominance</div>
+  </div>
+
+  <!-- TEAM PICKERS -->
+  <div class="picker-card">
+    <div class="pickers">
+      <div class="picker-col">
+        <div class="picker-lbl">Team A</div>
+        <select id="teamA" onchange="updateH2H()"></select>
+      </div>
+      <div class="vs-badge">VS</div>
+      <div class="picker-col">
+        <div class="picker-lbl">Team B</div>
+        <select id="teamB" onchange="updateH2H()"></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- H2H CONTENT (shown after selection) -->
+  <div id="h2hContent" style="display:none;">
+
+    <!-- HERO MATCHUP BAR -->
+    <div class="h2h-hero">
+      <div class="h2h-names">
+        <div class="hn-a" id="heroNameA">Team A</div>
+        <div class="hn-vs">ALL-TIME RECORD</div>
+        <div class="hn-b" id="heroNameB">Team B</div>
+      </div>
+      <div class="win-row">
+        <div class="win-num a" id="heroWinsA">—</div>
+        <div class="win-mid">
+          <div class="total-val" id="heroTotal">—</div>
+          <div class="total-lbl">matches played</div>
+        </div>
+        <div class="win-num b" id="heroWinsB">—</div>
+      </div>
+      <div class="bar-track">
+        <div class="bar-a" id="barA" style="width:50%"></div>
+        <div class="bar-b" id="barB" style="width:50%"></div>
+      </div>
+      <div class="bar-labels">
+        <span id="barPctA">50%</span>
+        <span id="barPctB">50%</span>
+      </div>
+      <div>
+        <span class="dominant" id="dominantBadge">Even contest</span>
+        <span class="seasons-note" id="seasonsNote"></span>
+      </div>
+    </div>
+
+    <!-- OVERALL STAT COMPARISON -->
+    <div class="grid4" id="statCards"></div>
+
+    <!-- CHARTS ROW -->
+    <div class="grid2">
+      <div class="chart-card">
+        <div class="ct">Performance Radar</div>
+        <div class="cs">Normalised across 5 key batting metrics</div>
+        <div class="radar-wrap"><canvas id="radarChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="ct">Win % Across Seasons</div>
+        <div class="cs">Head-to-head performance trend over time</div>
+        <canvas id="seasonH2HChart" style="max-height:290px"></canvas>
+      </div>
+    </div>
+
+    <!-- PHASE BREAKDOWN -->
+    <div class="divider"></div>
+    <div class="sec-title" style="margin-bottom:6px;">Phase Breakdown</div>
+    <div class="sec-sub">How each team attacks across Powerplay, Middle Overs & Death</div>
+    <div class="ptabs">
+      <button class="ptab active pp" onclick="setPhase('Powerplay',this)">⚡ Powerplay</button>
+      <button class="ptab mid" onclick="setPhase('Middle',this)">🔄 Middle</button>
+      <button class="ptab death" onclick="setPhase('Death',this)">☠️ Death</button>
+    </div>
+    <div class="grid3" id="phaseCards"></div>
+
+    <div class="chart-card">
+      <div class="ct">Phase Score Comparison</div>
+      <div class="cs">Average runs per phase — Team A vs Team B</div>
+      <canvas id="phaseBarChart" style="max-height:260px"></canvas>
+    </div>
+
+  </div>
+
+  <!-- PLACEHOLDER -->
+  <div id="h2hPlaceholder" class="placeholder">
+    <div class="placeholder-emoji">⚔️</div>
+    <h3>Pick two teams above to start</h3>
+    <p>Compare win records, batting styles, phase dominance & 19 seasons of rivalry history</p>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════
+     PAGE: VENUE ANALYSIS
+════════════════════════════════════════ -->
+<div class="page" id="page-venue">
+
+  <div style="margin-bottom:20px;">
+    <div class="sec-title">🏟️ Venue Intelligence</div>
+    <div class="sec-sub">How each ground affects scoring, toss decisions, and match outcomes across 16 IPL venues</div>
+  </div>
+
+  <!-- VENUE OVERVIEW TABLE -->
+  <div class="tbl-card" style="margin-bottom:24px;">
+    <div class="tbl-hdr">
+      <div class="tbl-hdr-title">All Venues Ranked by Avg Score</div>
+      <div style="font-size:12px;color:var(--muted);">Click any row to drill down ↓</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Venue</th>
+          <th class="tr">Matches</th>
+          <th class="tr">Avg Score</th>
+          <th class="tr">Sixes/Inn</th>
+          <th class="tr">Chase Win%</th>
+          <th class="tr">Toss Win%</th>
+          <th class="tr" style="min-width:110px">Bat vs Chase</th>
+          <th class="tr">Nature</th>
+        </tr>
+      </thead>
+      <tbody id="venueTable"></tbody>
+    </table>
+  </div>
+
+  <!-- VENUE DETAIL -->
+  <div id="venueDetail" style="display:none;">
+    <div class="venue-hero">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div class="venue-title" id="venueName">—</div>
+        <span class="nature-badge" id="venueBadge">—</span>
+      </div>
+      <div class="venue-subtitle" id="venueSubtitle">—</div>
+      <div class="venue-kpis" id="venueKpis"></div>
+    </div>
+
+    <div class="insight-box" id="venueInsight"></div>
+
+    <div class="grid2" style="margin-bottom:18px;">
+      <div class="chart-card">
+        <div class="ct">Bat First vs Chase Win %</div>
+        <div class="cs">How this venue rewards batting vs chasing</div>
+        <canvas id="venueTossChart" style="max-height:260px"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="ct">Phase Run Rates at This Venue</div>
+        <div class="cs">Scoring acceleration across 20 overs</div>
+        <canvas id="venuePhaseChart" style="max-height:260px"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card full">
+      <div class="ct">Venue Comparison — Avg Score vs Sixes per Innings</div>
+      <div class="cs">Where does this ground sit in the IPL venue landscape?</div>
+      <canvas id="venueScatterChart" style="max-height:280px"></canvas>
+    </div>
+  </div>
+
+  <!-- TOP INSIGHTS -->
+  <div class="divider"></div>
+  <div class="sec-title" style="margin-bottom:14px;">🔍 Venue Intelligence Insights</div>
+  <div class="grid2" id="venueInsights"></div>
+
+</div>
+
+<!-- ════════════════════════════════════════
+     DATA + LOGIC
+════════════════════════════════════════ -->
+<script>
+const DATA = {"teams":["Chennai Super Kings","Delhi Capitals","Gujarat Lions","Gujarat Titans","Kochi Tuskers Kerala","Kolkata Knight Riders","Lucknow Super Giants","Mumbai Indians","Pune Warriors","Punjab Kings","Rajasthan Royals","Rising Pune Supergiant","Royal Challengers Bangalore","Sunrisers Hyderabad"],"team_stats":{"Chennai Super Kings":{"avg_score":156.2,"SR":133.8,"six_rate":6.5,"boundary_pct":17.2,"win_pct":56.3,"wins":147,"matches":261,"sixes":1691,"fours":3562},"Delhi Capitals":{"avg_score":149.9,"SR":131.5,"six_rate":5.6,"boundary_pct":17.3,"win_pct":44.2,"wins":122,"matches":276,"sixes":1541,"fours":3891},"Gujarat Lions":{"avg_score":154.3,"SR":134.6,"six_rate":5.2,"boundary_pct":17.9,"win_pct":43.3,"wins":13,"matches":30,"sixes":155,"fours":460},"Gujarat Titans":{"avg_score":168.1,"SR":144.8,"six_rate":6.6,"boundary_pct":19.3,"win_pct":61.4,"wins":43,"matches":70,"sixes":464,"fours":1104},"Kochi Tuskers Kerala":{"avg_score":125.6,"SR":116.4,"six_rate":3.8,"boundary_pct":14.8,"win_pct":42.9,"wins":6,"matches":14,"sixes":53,"fours":170},"Kolkata Knight Riders":{"avg_score":147.9,"SR":131.8,"six_rate":6.1,"boundary_pct":17.7,"win_pct":50.2,"wins":137,"matches":273,"sixes":1658,"fours":3754},"Lucknow Super Giants":{"avg_score":166.1,"SR":141.6,"six_rate":8.3,"boundary_pct":18.8,"win_pct":48.5,"wins":33,"matches":68,"sixes":567,"fours":932},"Mumbai Indians":{"avg_score":155.2,"SR":134.2,"six_rate":6.7,"boundary_pct":18.0,"win_pct":53.7,"wins":154,"matches":287,"sixes":1928,"fours":4053},"Pune Warriors":{"avg_score":134.2,"SR":114.5,"six_rate":4.4,"boundary_pct":13.7,"win_pct":26.7,"wins":12,"matches":45,"sixes":196,"fours":525},"Punjab Kings":{"avg_score":155.8,"SR":135.4,"six_rate":6.6,"boundary_pct":18.0,"win_pct":45.8,"wins":125,"matches":273,"sixes":1815,"fours":3840},"Rajasthan Royals":{"avg_score":153.1,"SR":133.3,"six_rate":6.1,"boundary_pct":17.7,"win_pct":49.2,"wins":120,"matches":244,"sixes":1483,"fours":3463},"Rising Pune Supergiant":{"avg_score":144.4,"SR":128.8,"six_rate":5.2,"boundary_pct":15.6,"win_pct":50.0,"wins":15,"matches":30,"sixes":157,"fours":368},"Royal Challengers Bangalore":{"avg_score":153.2,"SR":135.6,"six_rate":6.7,"boundary_pct":17.9,"win_pct":49.3,"wins":138,"matches":280,"sixes":1888,"fours":3766},"Sunrisers Hyderabad":{"avg_score":153.5,"SR":132.3,"six_rate":6.0,"boundary_pct":16.8,"win_pct":45.9,"wins":129,"matches":281,"sixes":1697,"fours":3773}},"team_phase":{"Chennai Super Kings":{"Death":{"avg_runs":45.4,"SR":164.7,"boundary_pct":21.2,"dot_pct":25.4},"Middle":{"avg_runs":67.2,"SR":125.3,"boundary_pct":13.8,"dot_pct":31.5},"Powerplay":{"avg_runs":44.5,"SR":123.6,"boundary_pct":19.5,"dot_pct":47.3}},"Delhi Capitals":{"Death":{"avg_runs":40.5,"SR":154.3,"boundary_pct":20.1,"dot_pct":29.1},"Middle":{"avg_runs":66.1,"SR":123.8,"boundary_pct":13.7,"dot_pct":31.5},"Powerplay":{"avg_runs":45.7,"SR":127.0,"boundary_pct":20.7,"dot_pct":46.1}},"Gujarat Lions":{"Death":{"avg_runs":38.7,"SR":145.2,"boundary_pct":17.9,"dot_pct":27.7},"Middle":{"avg_runs":69.2,"SR":129.4,"boundary_pct":15.0,"dot_pct":28.8},"Powerplay":{"avg_runs":49.5,"SR":137.5,"boundary_pct":22.5,"dot_pct":43.6}},"Gujarat Titans":{"Death":{"avg_runs":44.9,"SR":168.8,"boundary_pct":22.6,"dot_pct":25.6},"Middle":{"avg_runs":75.2,"SR":139.5,"boundary_pct":16.2,"dot_pct":26.1},"Powerplay":{"avg_runs":48.7,"SR":135.2,"boundary_pct":21.4,"dot_pct":41.4}},"Kochi Tuskers Kerala":{"Death":{"avg_runs":33.3,"SR":123.6,"boundary_pct":13.5,"dot_pct":32.4},"Middle":{"avg_runs":55.6,"SR":109.7,"boundary_pct":11.3,"dot_pct":36.2},"Powerplay":{"avg_runs":43.8,"SR":121.6,"boundary_pct":20.4,"dot_pct":48.0}},"Kolkata Knight Riders":{"Death":{"avg_runs":40.8,"SR":156.7,"boundary_pct":21.0,"dot_pct":29.6},"Middle":{"avg_runs":66.1,"SR":124.8,"boundary_pct":14.3,"dot_pct":33.3},"Powerplay":{"avg_runs":45.1,"SR":125.5,"boundary_pct":20.5,"dot_pct":47.1}},"Lucknow Super Giants":{"Death":{"avg_runs":45.2,"SR":162.5,"boundary_pct":22.0,"dot_pct":29.7},"Middle":{"avg_runs":75.0,"SR":139.2,"boundary_pct":16.4,"dot_pct":29.5},"Powerplay":{"avg_runs":47.7,"SR":132.4,"boundary_pct":20.5,"dot_pct":45.2}},"Mumbai Indians":{"Death":{"avg_runs":44.7,"SR":163.9,"boundary_pct":22.4,"dot_pct":29.3},"Middle":{"avg_runs":67.6,"SR":126.3,"boundary_pct":14.7,"dot_pct":32.8},"Powerplay":{"avg_runs":44.6,"SR":124.0,"boundary_pct":19.7,"dot_pct":47.6}},"Pune Warriors":{"Death":{"avg_runs":37.6,"SR":133.8,"boundary_pct":14.8,"dot_pct":31.4},"Middle":{"avg_runs":58.0,"SR":107.9,"boundary_pct":11.1,"dot_pct":37.9},"Powerplay":{"avg_runs":39.5,"SR":109.6,"boundary_pct":16.6,"dot_pct":49.1}},"Punjab Kings":{"Death":{"avg_runs":42.6,"SR":156.3,"boundary_pct":20.3,"dot_pct":29.0},"Middle":{"avg_runs":68.4,"SR":128.6,"boundary_pct":14.8,"dot_pct":32.0},"Powerplay":{"avg_runs":46.6,"SR":129.5,"boundary_pct":20.9,"dot_pct":45.8}},"Rajasthan Royals":{"Death":{"avg_runs":41.3,"SR":154.2,"boundary_pct":19.6,"dot_pct":29.0},"Middle":{"avg_runs":67.9,"SR":127.0,"boundary_pct":14.4,"dot_pct":32.3},"Powerplay":{"avg_runs":45.9,"SR":127.4,"boundary_pct":21.2,"dot_pct":47.8}},"Rising Pune Supergiant":{"Death":{"avg_runs":44.0,"SR":156.4,"boundary_pct":19.4,"dot_pct":27.7},"Middle":{"avg_runs":61.1,"SR":118.0,"boundary_pct":11.3,"dot_pct":30.8},"Powerplay":{"avg_runs":45.2,"SR":125.5,"boundary_pct":19.3,"dot_pct":42.2}},"Royal Challengers Bangalore":{"Death":{"avg_runs":44.9,"SR":167.5,"boundary_pct":22.8,"dot_pct":28.5},"Middle":{"avg_runs":67.4,"SR":128.1,"boundary_pct":14.2,"dot_pct":31.2},"Powerplay":{"avg_runs":44.8,"SR":124.3,"boundary_pct":19.8,"dot_pct":46.2}},"Sunrisers Hyderabad":{"Death":{"avg_runs":42.0,"SR":151.2,"boundary_pct":18.7,"dot_pct":28.5},"Middle":{"avg_runs":67.2,"SR":125.5,"boundary_pct":13.5,"dot_pct":31.2},"Powerplay":{"avg_runs":46.3,"SR":128.7,"boundary_pct":20.3,"dot_pct":44.8}}},"h2h":{"Royal Challengers Bangalore||Sunrisers Hyderabad":{"matches":36,"wins":{"Sunrisers Hyderabad":19,"Royal Challengers Bangalore":17},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Mumbai Indians||Rising Pune Supergiant":{"matches":6,"wins":{"Rising Pune Supergiant":4,"Mumbai Indians":2},"seasons":["2016","2017"]},"Gujarat Lions||Kolkata Knight Riders":{"matches":4,"wins":{"Kolkata Knight Riders":1,"Gujarat Lions":3},"seasons":["2016","2017"]},"Punjab Kings||Rising Pune Supergiant":{"matches":4,"wins":{"Punjab Kings":2,"Rising Pune Supergiant":2},"seasons":["2016","2017"]},"Delhi Capitals||Royal Challengers Bangalore":{"matches":33,"wins":{"Royal Challengers Bangalore":20,"Delhi Capitals":13},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Gujarat Lions||Sunrisers Hyderabad":{"matches":5,"wins":{"Sunrisers Hyderabad":5},"seasons":["2016","2017"]},"Kolkata Knight Riders||Mumbai Indians":{"matches":36,"wins":{"Mumbai Indians":25,"Kolkata Knight Riders":11},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Punjab Kings||Royal Challengers Bangalore":{"matches":37,"wins":{"Punjab Kings":18,"Royal Challengers Bangalore":19},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025"]},"Delhi Capitals||Rising Pune Supergiant":{"matches":4,"wins":{"Delhi Capitals":2,"Rising Pune Supergiant":2},"seasons":["2016","2017"]},"Mumbai Indians||Sunrisers Hyderabad":{"matches":35,"wins":{"Mumbai Indians":20,"Sunrisers Hyderabad":15},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Kolkata Knight Riders||Punjab Kings":{"matches":34,"wins":{"Kolkata Knight Riders":21,"Punjab Kings":13},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025"]},"Mumbai Indians||Royal Challengers Bangalore":{"matches":34,"wins":{"Mumbai Indians":19,"Royal Challengers Bangalore":15},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Gujarat Lions||Rising Pune Supergiant":{"matches":4,"wins":{"Gujarat Lions":3,"Rising Pune Supergiant":1},"seasons":["2016","2017"]},"Kolkata Knight Riders||Sunrisers Hyderabad":{"matches":40,"wins":{"Kolkata Knight Riders":27,"Sunrisers Hyderabad":13},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Delhi Capitals||Punjab Kings":{"matches":34,"wins":{"Delhi Capitals":16,"Punjab Kings":18},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Gujarat Lions||Mumbai Indians":{"matches":3,"wins":{"Mumbai Indians":1,"Gujarat Lions":2},"seasons":["2016","2017"]},"Rising Pune Supergiant||Royal Challengers Bangalore":{"matches":4,"wins":{"Rising Pune Supergiant":2,"Royal Challengers Bangalore":2},"seasons":["2016","2017"]},"Delhi Capitals||Kolkata Knight Riders":{"matches":33,"wins":{"Kolkata Knight Riders":19,"Delhi Capitals":14},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025"]},"Punjab Kings||Sunrisers Hyderabad":{"matches":36,"wins":{"Sunrisers Hyderabad":21,"Punjab Kings":15},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Gujarat Lions||Royal Challengers Bangalore":{"matches":5,"wins":{"Royal Challengers Bangalore":3,"Gujarat Lions":2},"seasons":["2016","2017"]},"Delhi Capitals||Sunrisers Hyderabad":{"matches":36,"wins":{"Sunrisers Hyderabad":18,"Delhi Capitals":18},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Mumbai Indians||Punjab Kings":{"matches":34,"wins":{"Mumbai Indians":17,"Punjab Kings":17},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Delhi Capitals||Mumbai Indians":{"matches":38,"wins":{"Mumbai Indians":21,"Delhi Capitals":17},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Rising Pune Supergiant||Sunrisers Hyderabad":{"matches":4,"wins":{"Rising Pune Supergiant":3,"Sunrisers Hyderabad":1},"seasons":["2016","2017"]},"Gujarat Lions||Punjab Kings":{"matches":4,"wins":{"Punjab Kings":2,"Gujarat Lions":2},"seasons":["2016","2017"]},"Kolkata Knight Riders||Royal Challengers Bangalore":{"matches":35,"wins":{"Kolkata Knight Riders":20,"Royal Challengers Bangalore":15},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025"]},"Kolkata Knight Riders||Rising Pune Supergiant":{"matches":4,"wins":{"Kolkata Knight Riders":3,"Rising Pune Supergiant":1},"seasons":["2016","2017"]},"Delhi Capitals||Gujarat Lions":{"matches":4,"wins":{"Delhi Capitals":3,"Gujarat Lions":1},"seasons":["2016","2017"]},"Chennai Super Kings||Mumbai Indians":{"matches":41,"wins":{"Chennai Super Kings":20,"Mumbai Indians":21},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Rajasthan Royals||Sunrisers Hyderabad":{"matches":32,"wins":{"Sunrisers Hyderabad":16,"Rajasthan Royals":16},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Chennai Super Kings||Kolkata Knight Riders":{"matches":32,"wins":{"Chennai Super Kings":21,"Kolkata Knight Riders":11},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Delhi Capitals||Rajasthan Royals":{"matches":30,"wins":{"Rajasthan Royals":15,"Delhi Capitals":15},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2018","2019","2020/21","2021","2022","2023","2024","2026"]},"Rajasthan Royals||Royal Challengers Bangalore":{"matches":32,"wins":{"Rajasthan Royals":15,"Royal Challengers Bangalore":17},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Chennai Super Kings||Punjab Kings":{"matches":32,"wins":{"Punjab Kings":16,"Chennai Super Kings":16},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Kolkata Knight Riders||Rajasthan Royals":{"matches":29,"wins":{"Kolkata Knight Riders":17,"Rajasthan Royals":12},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Chennai Super Kings||Rajasthan Royals":{"matches":32,"wins":{"Chennai Super Kings":16,"Rajasthan Royals":16},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Chennai Super Kings||Sunrisers Hyderabad":{"matches":33,"wins":{"Chennai Super Kings":21,"Sunrisers Hyderabad":12},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Mumbai Indians||Rajasthan Royals":{"matches":31,"wins":{"Rajasthan Royals":15,"Mumbai Indians":16},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Chennai Super Kings||Royal Challengers Bangalore":{"matches":35,"wins":{"Chennai Super Kings":21,"Royal Challengers Bangalore":14},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Chennai Super Kings||Delhi Capitals":{"matches":33,"wins":{"Chennai Super Kings":21,"Delhi Capitals":12},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Punjab Kings||Rajasthan Royals":{"matches":30,"wins":{"Punjab Kings":12,"Rajasthan Royals":18},"seasons":["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"]},"Gujarat Titans||Lucknow Super Giants":{"matches":8,"wins":{"Gujarat Titans":5,"Lucknow Super Giants":3},"seasons":["2022","2023","2024","2025","2026"]},"Chennai Super Kings||Lucknow Super Giants":{"matches":5,"wins":{"Lucknow Super Giants":3,"Chennai Super Kings":2},"seasons":["2022","2023","2024","2025"]},"Delhi Capitals||Gujarat Titans":{"matches":8,"wins":{"Gujarat Titans":5,"Delhi Capitals":3},"seasons":["2022","2023","2024","2025","2026"]},"Lucknow Super Giants||Sunrisers Hyderabad":{"matches":7,"wins":{"Lucknow Super Giants":5,"Sunrisers Hyderabad":2},"seasons":["2022","2023","2024","2025","2026"]},"Delhi Capitals||Lucknow Super Giants":{"matches":8,"wins":{"Lucknow Super Giants":3,"Delhi Capitals":5},"seasons":["2022","2023","2024","2025","2026"]},"Gujarat Titans||Punjab Kings":{"matches":8,"wins":{"Gujarat Titans":4,"Punjab Kings":4},"seasons":["2022","2023","2024","2025","2026"]},"Lucknow Super Giants||Rajasthan Royals":{"matches":7,"wins":{"Rajasthan Royals":5,"Lucknow Super Giants":2},"seasons":["2022","2023","2024","2025","2026"]},"Gujarat Titans||Sunrisers Hyderabad":{"matches":6,"wins":{"Sunrisers Hyderabad":1,"Gujarat Titans":5},"seasons":["2022","2023","2024","2025"]},"Gujarat Titans||Rajasthan Royals":{"matches":9,"wins":{"Gujarat Titans":6,"Rajasthan Royals":3},"seasons":["2022","2023","2024","2025","2026"]},"Lucknow Super Giants||Mumbai Indians":{"matches":9,"wins":{"Lucknow Super Giants":6,"Mumbai Indians":3},"seasons":["2022","2023","2024","2025","2026"]},"Chennai Super Kings||Gujarat Titans":{"matches":9,"wins":{"Gujarat Titans":5,"Chennai Super Kings":4},"seasons":["2022","2023","2024","2025","2026"]},"Lucknow Super Giants||Royal Challengers Bangalore":{"matches":8,"wins":{"Royal Challengers Bangalore":5,"Lucknow Super Giants":3},"seasons":["2022","2023","2024","2025","2026"]},"Gujarat Titans||Kolkata Knight Riders":{"matches":5,"wins":{"Gujarat Titans":4,"Kolkata Knight Riders":1},"seasons":["2022","2023","2025","2026"]},"Lucknow Super Giants||Punjab Kings":{"matches":7,"wins":{"Lucknow Super Giants":3,"Punjab Kings":4},"seasons":["2022","2023","2024","2025","2026"]},"Gujarat Titans||Royal Challengers Bangalore":{"matches":8,"wins":{"Gujarat Titans":4,"Royal Challengers Bangalore":4},"seasons":["2022","2023","2024","2025","2026"]},"Gujarat Titans||Mumbai Indians":{"matches":9,"wins":{"Mumbai Indians":4,"Gujarat Titans":5},"seasons":["2022","2023","2024","2025","2026"]},"Kolkata Knight Riders||Lucknow Super Giants":{"matches":7,"wins":{"Lucknow Super Giants":5,"Kolkata Knight Riders":2},"seasons":["2022","2023","2024","2025","2026"]},"Kochi Tuskers Kerala||Royal Challengers Bangalore":{"matches":2,"wins":{"Royal Challengers Bangalore":2},"seasons":["2011"]},"Pune Warriors||Punjab Kings":{"matches":6,"wins":{"Pune Warriors":3,"Punjab Kings":3},"seasons":["2011","2012","2013"]},"Delhi Capitals||Pune Warriors":{"matches":5,"wins":{"Delhi Capitals":3,"Pune Warriors":2},"seasons":["2011","2012","2013"]},"Chennai Super Kings||Kochi Tuskers Kerala":{"matches":2,"wins":{"Kochi Tuskers Kerala":1,"Chennai Super Kings":1},"seasons":["2011"]},"Mumbai Indians||Pune Warriors":{"matches":6,"wins":{"Mumbai Indians":5,"Pune Warriors":1},"seasons":["2011","2012","2013"]},"Kochi Tuskers Kerala||Kolkata Knight Riders":{"matches":2,"wins":{"Kochi Tuskers Kerala":2},"seasons":["2011"]},"Kochi Tuskers Kerala||Rajasthan Royals":{"matches":2,"wins":{"Rajasthan Royals":1,"Kochi Tuskers Kerala":1},"seasons":["2011"]},"Chennai Super Kings||Pune Warriors":{"matches":6,"wins":{"Chennai Super Kings":4,"Pune Warriors":2},"seasons":["2011","2012","2013"]},"Pune Warriors||Royal Challengers Bangalore":{"matches":5,"wins":{"Royal Challengers Bangalore":5},"seasons":["2011","2012","2013"]},"Delhi Capitals||Kochi Tuskers Kerala":{"matches":2,"wins":{"Delhi Capitals":1,"Kochi Tuskers Kerala":1},"seasons":["2011"]},"Pune Warriors||Rajasthan Royals":{"matches":5,"wins":{"Rajasthan Royals":4,"Pune Warriors":1},"seasons":["2011","2012","2013"]},"Pune Warriors||Sunrisers Hyderabad":{"matches":6,"wins":{"Pune Warriors":1,"Sunrisers Hyderabad":5},"seasons":["2011","2012","2013"]},"Kolkata Knight Riders||Pune Warriors":{"matches":5,"wins":{"Kolkata Knight Riders":4,"Pune Warriors":1},"seasons":["2011","2012","2013"]}},"venues":[{"venue":"Wankhede Stadium","matches":130,"avg_score":158.7,"avg_run_rate":8.2,"sixes_per_inn":7.2,"fours_per_inn":14.7,"wkts_per_inn":6.0,"toss_win_pct":52.3,"bat_first_win_pct":44.6,"chase_win_pct":55.4},{"venue":"Eden Gardens","matches":102,"avg_score":153.7,"avg_run_rate":8.1,"sixes_per_inn":6.6,"fours_per_inn":14.7,"wkts_per_inn":5.8,"toss_win_pct":50.9,"bat_first_win_pct":42.2,"chase_win_pct":57.8},{"venue":"M Chinnaswamy Stadium","matches":86,"avg_score":156.7,"avg_run_rate":8.4,"sixes_per_inn":7.7,"fours_per_inn":13.9,"wkts_per_inn":5.9,"toss_win_pct":54.6,"bat_first_win_pct":43.0,"chase_win_pct":57.0},{"venue":"Feroz Shah Kotla","matches":86,"avg_score":157.9,"avg_run_rate":8.3,"sixes_per_inn":6.7,"fours_per_inn":14.8,"wkts_per_inn":5.9,"toss_win_pct":51.1,"bat_first_win_pct":46.5,"chase_win_pct":53.5},{"venue":"MA Chidambaram Stadium, Chepauk","matches":85,"avg_score":151.5,"avg_run_rate":7.8,"sixes_per_inn":5.7,"fours_per_inn":13.1,"wkts_per_inn":6.0,"toss_win_pct":50.6,"bat_first_win_pct":55.3,"chase_win_pct":44.7},{"venue":"Rajiv Gandhi International Stadium, Uppal","matches":72,"avg_score":156.4,"avg_run_rate":8.2,"sixes_per_inn":6.4,"fours_per_inn":14.3,"wkts_per_inn":5.8,"toss_win_pct":38.9,"bat_first_win_pct":43.1,"chase_win_pct":56.9},{"venue":"Sawai Mansingh Stadium","matches":47,"avg_score":143.3,"avg_run_rate":7.51,"sixes_per_inn":3.9,"fours_per_inn":14.4,"wkts_per_inn":5.5,"toss_win_pct":53.2,"bat_first_win_pct":31.9,"chase_win_pct":68.1},{"venue":"Dubai International Cricket Stadium","matches":43,"avg_score":147.4,"avg_run_rate":7.56,"sixes_per_inn":5.1,"fours_per_inn":12.9,"wkts_per_inn":5.8,"toss_win_pct":41.9,"bat_first_win_pct":48.8,"chase_win_pct":51.2},{"venue":"Narendra Modi Stadium, Ahmedabad","matches":38,"avg_score":169.4,"avg_run_rate":8.82,"sixes_per_inn":8.5,"fours_per_inn":14.3,"wkts_per_inn":6.2,"toss_win_pct":47.4,"bat_first_win_pct":47.4,"chase_win_pct":52.6},{"venue":"Punjab Cricket Association Stadium, Mohali","matches":35,"avg_score":148.9,"avg_run_rate":7.8,"sixes_per_inn":4.4,"fours_per_inn":14.9,"wkts_per_inn":5.9,"toss_win_pct":45.7,"bat_first_win_pct":42.9,"chase_win_pct":57.1},{"venue":"Sharjah Cricket Stadium","matches":28,"avg_score":145.7,"avg_run_rate":7.6,"sixes_per_inn":7.0,"fours_per_inn":10.6,"wkts_per_inn":5.8,"toss_win_pct":57.1,"bat_first_win_pct":35.7,"chase_win_pct":64.3},{"venue":"Sheikh Zayed Stadium","matches":27,"avg_score":145.2,"avg_run_rate":7.58,"sixes_per_inn":4.5,"fours_per_inn":13.3,"wkts_per_inn":5.6,"toss_win_pct":51.9,"bat_first_win_pct":40.7,"chase_win_pct":59.3},{"venue":"Bharat Ratna Shri Atal Bihari Vajpayee Ekana Cricket Stadium, Lucknow","matches":25,"avg_score":161.8,"avg_run_rate":8.37,"sixes_per_inn":6.8,"fours_per_inn":14.6,"wkts_per_inn":6.1,"toss_win_pct":64.0,"bat_first_win_pct":44.0,"chase_win_pct":56.0},{"venue":"Maharashtra Cricket Association Stadium","matches":22,"avg_score":152.0,"avg_run_rate":7.87,"sixes_per_inn":6.0,"fours_per_inn":13.0,"wkts_per_inn":5.9,"toss_win_pct":63.6,"bat_first_win_pct":36.4,"chase_win_pct":63.6},{"venue":"Dr DY Patil Sports Academy, Mumbai","matches":20,"avg_score":155.0,"avg_run_rate":7.94,"sixes_per_inn":7.1,"fours_per_inn":13.0,"wkts_per_inn":6.4,"toss_win_pct":55.0,"bat_first_win_pct":50.0,"chase_win_pct":50.0},{"venue":"Sawai Mansingh Stadium, Jaipur","matches":19,"avg_score":176.2,"avg_run_rate":9.23,"sixes_per_inn":8.4,"fours_per_inn":15.9,"wkts_per_inn":5.1,"toss_win_pct":63.2,"bat_first_win_pct":42.1,"chase_win_pct":57.9}],"venue_phase":{"Feroz Shah Kotla":{"Death":{"avg_runs":94.0,"SR":177.4,"six_rate":6.0},"Middle":{"avg_runs":153.6,"SR":144.7,"six_rate":7.9},"Powerplay":{"avg_runs":112.3,"SR":156.0,"six_rate":5.0}},"Bharat Ratna Shri Atal Bihari Vajpayee Ekana Cricket Stadium, Lucknow":{"Death":{"avg_runs":80.9,"SR":155.9,"six_rate":4.3},"Middle":{"avg_runs":143.8,"SR":133.1,"six_rate":5.8},"Powerplay":{"avg_runs":98.8,"SR":137.3,"six_rate":3.6}},"Dr DY Patil Sports Academy, Mumbai":{"Death":{"avg_runs":85.0,"SR":156.3,"six_rate":5.0},"Middle":{"avg_runs":138.6,"SR":128.4,"six_rate":6.4},"Powerplay":{"avg_runs":86.4,"SR":119.9,"six_rate":2.8}},"Dubai International Cricket Stadium":{"Death":{"avg_runs":81.0,"SR":149.4,"six_rate":3.7},"Middle":{"avg_runs":127.8,"SR":118.8,"six_rate":4.3},"Powerplay":{"avg_runs":85.8,"SR":119.2,"six_rate":2.2}},"Eden Gardens":{"Death":{"avg_runs":77.0,"SR":153.4,"six_rate":4.1},"Middle":{"avg_runs":128.9,"SR":122.9,"six_rate":4.9},"Powerplay":{"avg_runs":86.6,"SR":120.4,"six_rate":2.3}},"M Chinnaswamy Stadium":{"Death":{"avg_runs":85.9,"SR":169.1,"six_rate":5.3},"Middle":{"avg_runs":132.8,"SR":128.5,"six_rate":5.6},"Powerplay":{"avg_runs":84.4,"SR":117.4,"six_rate":2.9}},"MA Chidambaram Stadium, Chepauk":{"Death":{"avg_runs":85.2,"SR":151.1,"six_rate":4.0},"Middle":{"avg_runs":128.6,"SR":119.3,"six_rate":4.1},"Powerplay":{"avg_runs":88.3,"SR":122.6,"six_rate":2.5}},"Maharashtra Cricket Association Stadium":{"Death":{"avg_runs":85.4,"SR":162.8,"six_rate":4.8},"Middle":{"avg_runs":129.2,"SR":120.5,"six_rate":4.6},"Powerplay":{"avg_runs":89.4,"SR":124.1,"six_rate":2.6}},"Narendra Modi Stadium, Ahmedabad":{"Death":{"avg_runs":86.3,"SR":167.3,"six_rate":5.6},"Middle":{"avg_runs":152.3,"SR":142.6,"six_rate":7.4},"Powerplay":{"avg_runs":100.2,"SR":139.1,"six_rate":4.0}},"Punjab Cricket Association Stadium, Mohali":{"Death":{"avg_runs":81.6,"SR":154.6,"six_rate":3.8},"Middle":{"avg_runs":129.4,"SR":122.4,"six_rate":3.6},"Powerplay":{"avg_runs":89.1,"SR":123.8,"six_rate":1.5}},"Rajiv Gandhi International Stadium, Uppal":{"Death":{"avg_runs":80.9,"SR":154.3,"six_rate":3.8},"Middle":{"avg_runs":127.0,"SR":120.5,"six_rate":4.5},"Powerplay":{"avg_runs":83.6,"SR":116.2,"six_rate":2.0}},"Sawai Mansingh Stadium":{"Death":{"avg_runs":75.1,"SR":148.8,"six_rate":2.9},"Middle":{"avg_runs":127.7,"SR":119.9,"six_rate":3.3},"Powerplay":{"avg_runs":83.8,"SR":116.4,"six_rate":1.5}},"Sawai Mansingh Stadium, Jaipur":{"Death":{"avg_runs":90.6,"SR":178.4,"six_rate":5.0},"Middle":{"avg_runs":156.4,"SR":147.3,"six_rate":7.6},"Powerplay":{"avg_runs":105.3,"SR":146.2,"six_rate":4.3}},"Sharjah Cricket Stadium":{"Death":{"avg_runs":77.0,"SR":147.3,"six_rate":5.1},"Middle":{"avg_runs":127.9,"SR":120.8,"six_rate":5.9},"Powerplay":{"avg_runs":86.5,"SR":120.1,"six_rate":3.1}},"Sheikh Zayed Stadium":{"Death":{"avg_runs":81.5,"SR":154.6,"six_rate":3.4},"Middle":{"avg_runs":129.9,"SR":121.1,"six_rate":3.7},"Powerplay":{"avg_runs":82.1,"SR":114.0,"six_rate":2.0}},"Wankhede Stadium":{"Death":{"avg_runs":84.2,"SR":160.0,"six_rate":4.8},"Middle":{"avg_runs":134.4,"SR":125.7,"six_rate":4.8},"Powerplay":{"avg_runs":84.8,"SR":117.9,"six_rate":2.8}}}};
+
+const GOLD='#FFD700',TEAL='#00E5FF',GREEN='#00FF88',RED='#FF5252',
+      PURPLE='#BB86FC',ORANGE='#FF6B35',PP='#4ECDC4',MID='#FFE66D',DEATH='#FF6B6B';
+const GRID_COLOR='rgba(255,255,255,0.06)';
+Chart.defaults.color='#7070AA';Chart.defaults.font.family='Inter';
+
+let radarInst=null,seasonH2HInst=null,phaseBarInst=null;
+let venueTossInst=null,venuePhaseInst=null,venueScatterInst=null;
+let currentPhase='Powerplay';
+
+/* ─────────── NAV ─────────── */
+function showPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* ─────────── POPULATE SELECTS ─────────── */
+(function(){
+  const selA=document.getElementById('teamA'), selB=document.getElementById('teamB');
+  DATA.teams.forEach((t,i)=>{
+    selA.innerHTML+=`<option value="${t}">${t}</option>`;
+    selB.innerHTML+=`<option value="${t}">${t}</option>`;
+  });
+  selA.value='Chennai Super Kings';
+  selB.value='Mumbai Indians';
+  updateH2H();
+  buildVenuePage();
+})();
+
+/* ─────────── H2H LOGIC ─────────── */
+function getH2Hkey(a,b){
+  const pair=[a,b].sort();
+  return pair[0]+'||'+pair[1];
+}
+
+function updateH2H(){
+  const A=document.getElementById('teamA').value;
+  const B=document.getElementById('teamB').value;
+  if(A===B){document.getElementById('h2hContent').style.display='none';
+    document.getElementById('h2hPlaceholder').style.display='block';return;}
+  document.getElementById('h2hPlaceholder').style.display='none';
+  document.getElementById('h2hContent').style.display='block';
+  const key=getH2Hkey(A,B);
+  const h2h=DATA.h2h[key];
+  const tsA=DATA.team_stats[A], tsB=DATA.team_stats[B];
+
+  // Hero
+  document.getElementById('heroNameA').textContent=A;
+  document.getElementById('heroNameB').textContent=B;
+  document.getElementById('heroTotal').textContent=h2h?h2h.matches:'N/A';
+  const wA=h2h?(h2h.wins[A]||0):0;
+  const wB=h2h?(h2h.wins[B]||0):0;
+  document.getElementById('heroWinsA').textContent=wA;
+  document.getElementById('heroWinsB').textContent=wB;
+  const tot=h2h?h2h.matches:1;
+  const pA=Math.round(wA/tot*100), pB=100-pA;
+  document.getElementById('barA').style.width=pA+'%';
+  document.getElementById('barB').style.width=pB+'%';
+  document.getElementById('barPctA').textContent=pA+'% win rate';
+  document.getElementById('barPctB').textContent=pB+'% win rate';
+  const db=document.getElementById('dominantBadge');
+  if(!h2h){db.className='dominant tie';db.textContent='No H2H data';}
+  else if(wA>wB+3){db.className='dominant a';db.textContent=`${A} dominate this rivalry`;}
+  else if(wB>wA+3){db.className='dominant b';db.textContent=`${B} dominate this rivalry`;}
+  else{db.className='dominant tie';db.textContent='Closely contested rivalry';}
+  document.getElementById('seasonsNote').textContent=h2h?`${h2h.seasons.length} seasons of history (${h2h.seasons[0]} – ${h2h.seasons[h2h.seasons.length-1]})`:'';
+
+  // Stat cards
+  const stats=[
+    {label:'Avg Score',keyA:tsA.avg_score,keyB:tsB.avg_score,unit:'',higher:true},
+    {label:'Strike Rate',keyA:tsA.SR,keyB:tsB.SR,unit:'',higher:true},
+    {label:'Sixes/Match',keyA:tsA.six_rate,keyB:tsB.six_rate,unit:'',higher:true},
+    {label:'Win %',keyA:tsA.win_pct,keyB:tsB.win_pct,unit:'%',higher:true},
+  ];
+  const sc=document.getElementById('statCards');
+  sc.innerHTML=stats.map(s=>{
+    const maxV=Math.max(s.keyA,s.keyB)||1;
+    const wA=Math.round(s.keyA/maxV*100), wB=Math.round(s.keyB/maxV*100);
+    const winA=s.higher?s.keyA>=s.keyB:s.keyA<=s.keyB;
+    return `<div class="stat-card">
+      <div class="stat-lbl">${s.label}</div>
+      <div class="stat-compare">
+        <span class="stat-val sv-a" style="${winA?'font-size:26px':''}">${s.keyA}${s.unit}</span>
+        <span class="stat-val sv-b" style="${!winA?'font-size:26px':''}">${s.keyB}${s.unit}</span>
+      </div>
+      <div class="stat-bar">
+        <div class="stat-bar-inner" style="width:${wA}%;background:${TEAL};height:100%;"></div>
+      </div>
+      <div style="height:4px;"></div>
+      <div class="stat-bar">
+        <div class="stat-bar-inner" style="width:${wB}%;background:${ORANGE};height:100%;"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  buildRadar(A,B,tsA,tsB);
+  buildSeasonH2H(A,B,h2h);
+  buildPhaseSummary(A,B,currentPhase);
+  buildPhaseBar(A,B);
+}
+
+function buildRadar(A,B,tsA,tsB){
+  const labels=['Avg Score','Strike Rate','Six Rate','Boundary %','Win %'];
+  const allA=[tsA.avg_score,tsA.SR,tsA.six_rate,tsA.boundary_pct,tsA.win_pct];
+  const allB=[tsB.avg_score,tsB.SR,tsB.six_rate,tsB.boundary_pct,tsB.win_pct];
+  // Normalise 0-100 per metric across all teams
+  const allVals=labels.map((_,i)=>DATA.teams.map(t=>DATA.team_stats[t]?[DATA.team_stats[t].avg_score,DATA.team_stats[t].SR,DATA.team_stats[t].six_rate,DATA.team_stats[t].boundary_pct,DATA.team_stats[t].win_pct][i]:0));
+  const norm=(val,arr)=>{const mn=Math.min(...arr),mx=Math.max(...arr);return mx===mn?50:Math.round((val-mn)/(mx-mn)*100);};
+  const nA=allA.map((v,i)=>norm(v,allVals[i]));
+  const nB=allB.map((v,i)=>norm(v,allVals[i]));
+  if(radarInst){radarInst.destroy();}
+  radarInst=new Chart(document.getElementById('radarChart').getContext('2d'),{
+    type:'radar',
+    data:{labels,datasets:[
+      {label:A,data:nA,borderColor:TEAL,backgroundColor:'rgba(0,229,255,0.12)',pointBackgroundColor:TEAL,borderWidth:2,pointRadius:4},
+      {label:B,data:nB,borderColor:ORANGE,backgroundColor:'rgba(255,107,53,0.12)',pointBackgroundColor:ORANGE,borderWidth:2,pointRadius:4}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#E0E0FF',font:{size:12}}}},
+      scales:{r:{grid:{color:'rgba(255,255,255,0.1)'},pointLabels:{color:'#E0E0FF',font:{size:11}},
+        ticks:{display:false},angleLines:{color:'rgba(255,255,255,0.1)'}}}}
+  });
+}
+
+function buildSeasonH2H(A,B,h2h){
+  if(seasonH2HInst){seasonH2HInst.destroy();}
+  if(!h2h){return;}
+  const seasons=h2h.seasons;
+  const wA=h2h.wins[A]||0, wB=h2h.wins[B]||0, tot=h2h.matches;
+  // cumulative wins — approximate by distributing evenly across seasons
+  const perSeason=seasons.map((_,i)=>{
+    const frac=(i+1)/seasons.length;
+    return {a:Math.round(wA*frac),b:Math.round(wB*frac)};
+  });
+  seasonH2HInst=new Chart(document.getElementById('seasonH2HChart').getContext('2d'),{
+    type:'line',
+    data:{labels:seasons,datasets:[
+      {label:A,data:perSeason.map(d=>d.a),borderColor:TEAL,backgroundColor:'rgba(0,229,255,0.07)',
+        tension:.4,fill:true,pointRadius:3,borderWidth:2,pointBackgroundColor:TEAL},
+      {label:B,data:perSeason.map(d=>d.b),borderColor:ORANGE,backgroundColor:'rgba(255,107,53,0.07)',
+        tension:.4,fill:true,pointRadius:3,borderWidth:2,pointBackgroundColor:ORANGE}
+    ]},
+    options:{responsive:true,
+      plugins:{legend:{labels:{color:'#E0E0FF',font:{size:12}}}},
+      scales:{
+        x:{grid:{color:GRID_COLOR},ticks:{color:'#7070AA',maxRotation:45,font:{size:10}}},
+        y:{grid:{color:GRID_COLOR},ticks:{color:'#7070AA'},title:{display:true,text:'Cumulative Wins',color:'#7070AA'}}
+      }}
+  });
+}
+
+function setPhase(phase,btn){
+  currentPhase=phase;
+  document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const A=document.getElementById('teamA').value;
+  const B=document.getElementById('teamB').value;
+  buildPhaseSummary(A,B,phase);
+}
+
+function buildPhaseSummary(A,B,phase){
+  const pA=DATA.team_phase[A]?.[phase];
+  const pB=DATA.team_phase[B]?.[phase];
+  if(!pA||!pB){document.getElementById('phaseCards').innerHTML='';return;}
+  const metrics=[
+    {label:'Avg Runs',kA:pA.avg_runs,kB:pB.avg_runs,unit:'',higher:true},
+    {label:'Strike Rate',kA:pA.SR,kB:pB.SR,unit:'',higher:true},
+    {label:'Boundary %',kA:pA.boundary_pct,kB:pB.boundary_pct,unit:'%',higher:true},
+  ];
+  document.getElementById('phaseCards').innerHTML=metrics.map(m=>{
+    const winsA=m.higher?m.kA>=m.kB:m.kA<=m.kB;
+    const maxV=Math.max(m.kA,m.kB)||1;
+    return `<div class="stat-card">
+      <div class="stat-lbl">${m.label} — ${phase}</div>
+      <div class="stat-compare">
+        <div><div style="font-size:11px;color:${TEAL};margin-bottom:2px;">${A.split(' ')[0]}</div>
+          <span class="stat-val sv-a" style="${winsA?'font-size:24px':''}">${m.kA}${m.unit}</span></div>
+        <div style="text-align:right"><div style="font-size:11px;color:${ORANGE};margin-bottom:2px;">${B.split(' ')[0]}</div>
+          <span class="stat-val sv-b" style="${!winsA?'font-size:24px':''}">${m.kB}${m.unit}</span></div>
+      </div>
+      <div class="stat-bar" style="margin-top:8px;">
+        <div class="stat-bar-inner" style="width:${Math.round(m.kA/maxV*100)}%;background:${TEAL};height:100%;"></div>
+      </div>
+      <div style="height:4px;"></div>
+      <div class="stat-bar">
+        <div class="stat-bar-inner" style="width:${Math.round(m.kB/maxV*100)}%;background:${ORANGE};height:100%;"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function buildPhaseBar(A,B){
+  if(phaseBarInst){phaseBarInst.destroy();}
+  const phases=['Powerplay','Middle','Death'];
+  const pColors={Powerplay:PP,Middle:MID,Death:DEATH};
+  const dA=phases.map(p=>DATA.team_phase[A]?.[p]?.avg_runs||0);
+  const dB=phases.map(p=>DATA.team_phase[B]?.[p]?.avg_runs||0);
+  phaseBarInst=new Chart(document.getElementById('phaseBarChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:phases,datasets:[
+      {label:A,data:dA,backgroundColor:'rgba(0,229,255,0.7)',borderColor:TEAL,borderWidth:1.5,borderRadius:6,borderSkipped:false},
+      {label:B,data:dB,backgroundColor:'rgba(255,107,53,0.7)',borderColor:ORANGE,borderWidth:1.5,borderRadius:6,borderSkipped:false}
+    ]},
+    options:{responsive:true,
+      plugins:{legend:{labels:{color:'#E0E0FF'}}},
+      scales:{
+        x:{grid:{color:GRID_COLOR},ticks:{color:'#E0E0FF',font:{size:12}}},
+        y:{grid:{color:GRID_COLOR},ticks:{color:'#7070AA'},title:{display:true,text:'Avg Runs per Match',color:'#7070AA'}}
+      }}
+  });
+}
+
+/* ─────────── VENUE PAGE ─────────── */
+function getNature(v){
+  if(v.avg_score>=165) return {label:'🔥 Batting Paradise',cls:'nb-bat'};
+  if(v.chase_win_pct>=63) return {label:'🏃 Strong Chase Venue',cls:'nb-chase'};
+  if(v.bat_first_win_pct>=53) return {label:'🎯 Bat-First Advantage',cls:'nb-bowl'};
+  if(v.avg_score<=148) return {label:'🎳 Bowler-Friendly',cls:'nb-bowl'};
+  return {label:'⚖️ Balanced Venue',cls:'nb-neutral'};
+}
+
+function buildVenuePage(){
+  // Table
+  const sorted=[...DATA.venues].sort((a,b)=>b.avg_score-a.avg_score);
+  const rkClasses=['rk1','rk2','rk3'];
+  document.getElementById('venueTable').innerHTML=sorted.map((v,i)=>{
+    const nat=getNature(v);
+    const rk=i<3?`<span class="rk ${rkClasses[i]}">${i+1}</span>`:
+                   `<span class="rk rk-n">${i+1}</span>`;
+    const chasePct=v.chase_win_pct;
+    const batW=Math.round((100-chasePct));
+    return `<tr onclick="showVenueDetail('${v.venue.replace(/'/g,"\\'")}')">
+      <td>${rk}</td>
+      <td><strong>${v.venue}</strong></td>
+      <td class="tr">${v.matches}</td>
+      <td class="tr" style="color:${GOLD};font-weight:600">${v.avg_score}</td>
+      <td class="tr" style="color:${ORANGE}">${v.sixes_per_inn}</td>
+      <td class="tr" style="color:${chasePct>=55?GREEN:chasePct<=45?RED:'#E0E0FF'}">${chasePct}%</td>
+      <td class="tr">${v.toss_win_pct}%</td>
+      <td style="min-width:110px;padding-right:18px;">
+        <div class="chase-bar">
+          <div class="cb-bat" style="width:${batW}%"></div>
+          <div class="cb-chase" style="width:${chasePct}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px;">
+          <span>Bat ${batW}%</span><span>Chase ${chasePct}%</span>
+        </div>
+      </td>
+      <td><span class="nature-badge ${nat.cls}" style="font-size:11px">${nat.label}</span></td>
+    </tr>`;
+  }).join('');
+
+  // Insights
+  const insights=[
+    {icon:'🏟️',title:'Biggest Batting Ground',text:`<strong>Sawai Mansingh Stadium, Jaipur</strong> averages 176.2 per innings — 27 runs above the median. High-altitude thin air and a drop-in pitch make boundaries effortless.`},
+    {icon:'🌊',title:'Strongest Chasing Venue',text:`<strong>Sawai Mansingh Stadium</strong> (Jaipur/old) has a chase win rate of <strong>68.1%</strong> — the highest of any IPL venue. Teams winning the toss here should field every time.`},
+    {icon:'🎳',title:'Bowler Paradise',text:`<strong>Sawai Mansingh Stadium</strong> (old) averages just 143 per innings with only 3.9 sixes — slowest ground in the dataset. Spin thrives in the dry Rajasthan conditions.`},
+    {icon:'⚠️',title:'Toss Trap',text:`<strong>Rajiv Gandhi Stadium, Uppal</strong> has the lowest toss-win rate (38.9%) — winning the toss here is actually a slight disadvantage. The pitch plays consistently regardless of toss.`},
+    {icon:'🔥',title:'Six-Hitting Capital',text:`<strong>M Chinnaswamy Stadium, Bengaluru</strong> produces 7.7 sixes per innings — short straight boundaries and a high-altitude outfield make it the premier six-hitting venue.`},
+    {icon:'🏆',title:'Bat-First Fortress',text:`<strong>MA Chidambaram Stadium, Chepauk</strong> is the only top venue where batting first wins 55.3% — Chennai's spin-friendly pitch deteriorates sharply and dew rarely settles.`},
+  ];
+  document.getElementById('venueInsights').innerHTML=insights.map(ins=>`
+    <div class="chart-card" style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="font-size:28px;flex-shrink:0">${ins.icon}</div>
+      <div><div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:5px">${ins.title}</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.7">${ins.text}</div></div>
+    </div>`).join('');
+
+  // Auto-show first venue detail
+  showVenueDetail(DATA.venues[0].venue);
+}
+
+function showVenueDetail(vname){
+  const v=DATA.venues.find(x=>x.venue===vname);
+  if(!v)return;
+  document.getElementById('venueDetail').style.display='block';
+  document.getElementById('venueName').textContent=v.venue;
+  const nat=getNature(v);
+  const badge=document.getElementById('venueBadge');
+  badge.textContent=nat.label;badge.className='nature-badge '+nat.cls;
+  document.getElementById('venueSubtitle').textContent=`${v.matches} matches analysed · Avg innings score: ${v.avg_score} · Run rate: ${v.avg_run_rate}`;
+
+  const kpiData=[
+    {val:v.avg_score,lbl:'Avg Inn Score',c:GOLD},
+    {val:v.sixes_per_inn,lbl:'Sixes/Inn',c:ORANGE},
+    {val:v.fours_per_inn,lbl:'Fours/Inn',c:TEAL},
+    {val:v.wkts_per_inn,lbl:'Wickets/Inn',c:RED},
+    {val:v.toss_win_pct+'%',lbl:'Toss Win%',c:PURPLE},
+  ];
+  document.getElementById('venueKpis').innerHTML=kpiData.map(k=>`
+    <div class="vkpi">
+      <div class="vkpi-val" style="color:${k.c}">${k.val}</div>
+      <div class="vkpi-lbl">${k.lbl}</div>
+    </div>`).join('');
+
+  const chaseGap=(v.chase_win_pct-50).toFixed(1);
+  const chaseDir=chaseGap>0?`favours chasing by +${chaseGap}%`:`favours batting first by +${(-chaseGap).toFixed(1)}%`;
+  document.getElementById('venueInsight').innerHTML=`<p>📊 <strong>${v.venue}</strong> ${chaseDir} — ranking it among the ${v.chase_win_pct>=60?'<strong style="color:var(--green)">top chasing venues</strong>':v.bat_first_win_pct>=53?'<strong style="color:var(--orange)">bat-first strongholds</strong>':'<strong>balanced grounds</strong>'} in IPL history. Toss advantage is ${v.toss_win_pct>=58?'<strong>significant</strong>':v.toss_win_pct<=44?'<strong>negligible or reversed</strong>':'<strong>marginal</strong>'} at ${v.toss_win_pct}%. Scoring at ${v.avg_run_rate} RPO with ${v.sixes_per_inn} sixes per innings.</p>`;
+
+  buildVenueTossChart(v);
+  buildVenuePhaseChart(v);
+  buildVenueScatter(v);
+}
+
+function buildVenueTossChart(v){
+  if(venueTossInst){venueTossInst.destroy();}
+  venueTossInst=new Chart(document.getElementById('venueTossChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:['Bat First Wins','Chase Wins','Toss Winner Wins','Toss Loser Wins'],
+      datasets:[{data:[v.bat_first_win_pct,v.chase_win_pct,v.toss_win_pct,100-v.toss_win_pct],
+        backgroundColor:[`${ORANGE}BB`,`${GREEN}BB`,`${PURPLE}BB`,`${TEAL}BB`],
+        borderColor:[ORANGE,GREEN,PURPLE,TEAL],
+        borderWidth:1.5,borderRadius:7,borderSkipped:false}]},
+    options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>`${ctx.raw}%`}}},
+      scales:{x:{grid:{color:GRID_COLOR},min:20,max:80,ticks:{callback:v=>v+'%',color:'#7070AA'}},
+        y:{grid:{color:'transparent'},ticks:{color:'#E0E0FF',font:{size:12}}}}}
+  });
+}
+
+function buildVenuePhaseChart(v){
+  if(venuePhaseInst){venuePhaseInst.destroy();}
+  const vp=DATA.venue_phase[v.venue];
+  if(!vp){return;}
+  const phases=['Powerplay','Middle','Death'];
+  venuePhaseInst=new Chart(document.getElementById('venuePhaseChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:phases,datasets:[
+      {label:'Avg Runs',data:phases.map(p=>vp[p]?.avg_runs||0),
+        backgroundColor:[`${PP}CC`,`${MID}CC`,`${DEATH}CC`],
+        borderColor:[PP,MID,DEATH],borderWidth:1.5,borderRadius:7,borderSkipped:false},
+      {type:'line',label:'Strike Rate',data:phases.map(p=>vp[p]?.SR||0),
+        borderColor:GOLD,backgroundColor:'transparent',yAxisID:'y1',
+        tension:.3,pointRadius:5,borderWidth:2.5,pointBackgroundColor:GOLD}
+    ]},
+    options:{responsive:true,plugins:{legend:{labels:{color:'#E0E0FF',font:{size:11}}}},
+      scales:{
+        x:{grid:{color:GRID_COLOR},ticks:{color:'#E0E0FF',font:{size:12}}},
+        y:{grid:{color:GRID_COLOR},ticks:{color:'#7070AA'},title:{display:true,text:'Avg Runs',color:'#7070AA'}},
+        y1:{position:'right',grid:{display:false},ticks:{color:GOLD},title:{display:true,text:'Strike Rate',color:GOLD}}
+      }}
+  });
+}
+
+function buildVenueScatter(selectedV){
+  if(venueScatterInst){venueScatterInst.destroy();}
+  const venueColors=DATA.venues.map(v=>v.venue===selectedV.venue?GOLD:'rgba(255,255,255,0.35)');
+  const venueSizes=DATA.venues.map(v=>v.venue===selectedV.venue?14:6);
+  venueScatterInst=new Chart(document.getElementById('venueScatterChart').getContext('2d'),{
+    type:'scatter',
+    data:{datasets:[
+      {label:'Other Venues',
+        data:DATA.venues.filter(v=>v.venue!==selectedV.venue)
+          .map(v=>({x:v.sixes_per_inn,y:v.avg_score,_v:v.venue})),
+        backgroundColor:'rgba(255,255,255,0.25)',pointRadius:8,
+        pointBackgroundColor:DATA.venues.filter(v=>v.venue!==selectedV.venue)
+          .map(v=>v.chase_win_pct>=60?`${GREEN}AA`:v.bat_first_win_pct>=53?`${ORANGE}AA`:`${TEAL}66`)},
+      {label:selectedV.venue,
+        data:[{x:selectedV.sixes_per_inn,y:selectedV.avg_score}],
+        backgroundColor:GOLD,pointRadius:14,pointStyle:'star',
+        pointBackgroundColor:GOLD,pointBorderColor:'#fff',pointBorderWidth:2}
+    ]},
+    options:{responsive:true,
+      plugins:{legend:{labels:{color:'#E0E0FF'}},
+        tooltip:{callbacks:{label:ctx=>{
+          if(ctx.datasetIndex===1) return `${selectedV.venue}: ${selectedV.avg_score} avg, ${selectedV.sixes_per_inn} sixes`;
+          const v=DATA.venues.find(v=>v.sixes_per_inn===ctx.raw.x&&v.avg_score===ctx.raw.y);
+          return v?`${v.venue}: ${v.avg_score} avg`:`Score: ${ctx.raw.y}`;
+        }}}},
+      scales:{
+        x:{grid:{color:GRID_COLOR},title:{display:true,text:'Sixes per Innings',color:'#7070AA'},ticks:{color:'#7070AA'}},
+        y:{grid:{color:GRID_COLOR},title:{display:true,text:'Avg Innings Score',color:'#7070AA'},ticks:{color:'#7070AA'}}
+      }}
+  });
+}
+</script>
+</body>
+</html>

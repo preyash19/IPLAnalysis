@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPL Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+  :root {
+    --bg:#07071A; --panel:#0F0F2A; --card:#141432; --border:rgba(255,255,255,0.07);
+    --gold:#FFD700; --teal:#00E5FF; --green:#00FF88; --red:#FF4444;
+    --purple:#BB86FC; --orange:#FF6B35; --text:#E0E0FF; --muted:#7070AA;
+    --pp:#4ECDC4; --mid:#FFE66D; --death:#FF6B6B;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
+
+  /* TOPBAR */
+  .topbar{background:linear-gradient(90deg,#0a0a22,#1a0a35,#0a1528);
+    border-bottom:2px solid var(--gold);padding:0 28px;display:flex;align-items:center;
+    justify-content:space-between;height:60px;position:sticky;top:0;z-index:100;}
+  .topbar-logo{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;
+    background:linear-gradient(90deg,var(--gold),var(--teal));-webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;background-clip:text;}
+  .topbar-meta{font-size:12px;color:var(--muted);}
+  .nav-tabs{display:flex;gap:4px;}
+  .nav-tab{padding:6px 16px;border-radius:6px;border:1px solid transparent;cursor:pointer;
+    font-size:13px;font-weight:500;transition:all .2s;color:var(--muted);background:none;}
+  .nav-tab:hover{color:var(--text);border-color:var(--border);}
+  .nav-tab.active{background:linear-gradient(135deg,rgba(255,215,0,.15),rgba(0,229,255,.08));
+    border-color:var(--gold);color:var(--gold);}
+
+  /* PAGES */
+  .page{display:none;padding:24px 28px;max-width:1400px;margin:0 auto;}
+  .page.active{display:block;}
+
+  /* KPI ROW */
+  .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;}
+  .kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:18px 16px;position:relative;overflow:hidden;}
+  .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+  .kpi.gold::before{background:linear-gradient(90deg,var(--gold),var(--orange));}
+  .kpi.teal::before{background:linear-gradient(90deg,var(--teal),#0055ff);}
+  .kpi.green::before{background:linear-gradient(90deg,var(--green),#00aa55);}
+  .kpi.red::before{background:linear-gradient(90deg,var(--red),#aa0000);}
+  .kpi.purple::before{background:linear-gradient(90deg,var(--purple),#6600cc);}
+  .kpi-val{font-family:'Rajdhani',sans-serif;font-size:30px;font-weight:700;line-height:1;}
+  .kpi.gold .kpi-val{color:var(--gold);}
+  .kpi.teal .kpi-val{color:var(--teal);}
+  .kpi.green .kpi-val{color:var(--green);}
+  .kpi.red .kpi-val{color:var(--red);}
+  .kpi.purple .kpi-val{color:var(--purple);}
+  .kpi-lbl{font-size:12px;color:var(--muted);margin-top:6px;}
+  .kpi-icon{position:absolute;top:14px;right:14px;font-size:20px;opacity:.25;}
+
+  /* GRID */
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:18px;}
+  .grid-13{display:grid;grid-template-columns:1fr 2fr;gap:18px;margin-bottom:18px;}
+  .grid-31{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:18px;}
+
+  /* CHART CARD */
+  .chart-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;
+    padding:20px;overflow:hidden;}
+  .chart-card.full{grid-column:1/-1;}
+  .chart-title{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;
+    color:#fff;margin-bottom:4px;}
+  .chart-sub{font-size:12px;color:var(--muted);margin-bottom:16px;}
+  .chart-wrap{position:relative;}
+  canvas{max-height:300px;}
+
+  /* TABLE */
+  .tbl-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+  .tbl-header{padding:16px 18px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;}
+  .tbl-title{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:#fff;}
+  table{width:100%;border-collapse:collapse;}
+  thead th{padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;
+    color:var(--gold);text-align:left;background:rgba(255,215,0,.05);font-weight:600;}
+  tbody tr{border-top:1px solid var(--border);transition:background .15s;}
+  tbody tr:hover{background:rgba(255,255,255,.02);}
+  tbody td{padding:10px 14px;font-size:13px;}
+  .r{text-align:right;font-family:'Rajdhani',sans-serif;font-size:14px;}
+  .rank-badge{display:inline-flex;align-items:center;justify-content:center;
+    width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;color:#000;margin-right:8px;}
+  .rank-1{background:var(--gold);}
+  .rank-2{background:#C0C0C0;}
+  .rank-3{background:#CD7F32;}
+  .rank-4{background:var(--teal);color:#000;}
+  .rank-5{background:var(--purple);color:#fff;}
+
+  /* PHASE CARDS */
+  .phase-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;}
+  .phase-card{border-radius:12px;padding:18px;}
+  .phase-card.pp{background:linear-gradient(135deg,rgba(78,205,196,.18),rgba(78,205,196,.04));border:1px solid rgba(78,205,196,.3);}
+  .phase-card.mid{background:linear-gradient(135deg,rgba(255,230,109,.18),rgba(255,230,109,.04));border:1px solid rgba(255,230,109,.3);}
+  .phase-card.death{background:linear-gradient(135deg,rgba(255,107,107,.18),rgba(255,107,107,.04));border:1px solid rgba(255,107,107,.3);}
+  .ph-name{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;margin-bottom:12px;}
+  .phase-card.pp .ph-name{color:var(--pp);}
+  .phase-card.mid .ph-name{color:var(--mid);}
+  .phase-card.death .ph-name{color:var(--death);}
+  .ph-row{display:flex;justify-content:space-between;margin:5px 0;font-size:12px;}
+  .ph-row .pl{color:var(--muted);}
+  .ph-row .pv{font-weight:600;font-family:'Rajdhani',sans-serif;}
+  .ph-gap{font-size:11px;padding:2px 7px;border-radius:10px;margin-left:6px;}
+  .ph-gap.pos{background:rgba(0,255,136,.15);color:var(--green);}
+  .ph-gap.neg{background:rgba(255,68,68,.15);color:var(--red);}
+
+  /* SEARCH */
+  .search-row{display:flex;gap:12px;margin-bottom:16px;align-items:center;}
+  .search-input{background:var(--card);border:1px solid var(--border);border-radius:8px;
+    padding:8px 14px;color:var(--text);font-size:13px;width:260px;outline:none;}
+  .search-input:focus{border-color:var(--gold);}
+  .sort-btn{padding:7px 14px;border-radius:7px;border:1px solid var(--border);
+    background:var(--card);color:var(--muted);font-size:12px;cursor:pointer;transition:all .2s;}
+  .sort-btn.active{border-color:var(--teal);color:var(--teal);}
+
+  /* OVER CHART */
+  #overChart{max-height:260px;}
+
+  /* INSIGHT BOX */
+  .insight-box{background:linear-gradient(135deg,rgba(255,215,0,.08),rgba(0,229,255,.04));
+    border:1px solid rgba(255,215,0,.2);border-radius:12px;padding:16px 18px;margin-bottom:18px;}
+  .insight-box p{font-size:13px;line-height:1.8;color:var(--text);}
+  .insight-box strong{color:var(--gold);}
+
+  /* TOSS DIAL */
+  .dial-container{display:flex;align-items:center;justify-content:center;gap:40px;padding:10px;}
+  .dial{text-align:center;}
+  .dial-val{font-family:'Rajdhani',sans-serif;font-size:52px;font-weight:700;line-height:1;}
+  .dial-lbl{font-size:12px;color:var(--muted);margin-top:4px;}
+  .dial-vs{font-size:20px;color:var(--muted);align-self:center;}
+
+  /* BAR INLINE */
+  .inline-bar{height:6px;border-radius:3px;margin-top:6px;overflow:hidden;background:rgba(255,255,255,.08);}
+  .inline-bar-fill{height:100%;border-radius:3px;transition:width .5s;}
+
+  @media(max-width:900px){
+    .kpi-row{grid-template-columns:repeat(3,1fr);}
+    .grid-2,.grid-3,.grid-13,.grid-31{grid-template-columns:1fr;}
+    .nav-tab span{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">🏏 IPL Analytics</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('overview')">📊 <span>Overview</span></button>
+    <button class="nav-tab" onclick="showPage('toss')">🪙 <span>Toss</span></button>
+    <button class="nav-tab" onclick="showPage('phases')">📈 <span>Phases</span></button>
+    <button class="nav-tab" onclick="showPage('batters')">🏏 <span>Batters</span></button>
+    <button class="nav-tab" onclick="showPage('bowlers')">🎯 <span>Bowlers</span></button>
+    <button class="nav-tab" onclick="showPage('teams')">🏆 <span>Teams</span></button>
+    <button class="nav-tab" onclick="window.location.href='IPL_H2H_Venue_Dashboard.html'">🏟️ <span>Venue</span></button>
+  </div>
+  <div class="topbar-meta">289,914 balls · 19 seasons</div>
+</div>
+
+<!-- ═══════ PAGE: OVERVIEW ═══════ -->
+<div class="page active" id="page-overview">
+  <div class="kpi-row">
+    <div class="kpi gold"><div class="kpi-icon">🏟️</div><div class="kpi-val">1,194</div><div class="kpi-lbl">Matches Analysed</div></div>
+    <div class="kpi teal"><div class="kpi-icon">🔵</div><div class="kpi-val">289K</div><div class="kpi-lbl">Balls Processed</div></div>
+    <div class="kpi green"><div class="kpi-icon">📅</div><div class="kpi-val">19</div><div class="kpi-lbl">IPL Seasons</div></div>
+    <div class="kpi red"><div class="kpi-icon">🏏</div><div class="kpi-val">168.3</div><div class="kpi-lbl">Avg 1st Innings Score</div></div>
+    <div class="kpi purple"><div class="kpi-icon">☠️</div><div class="kpi-val">54.6%</div><div class="kpi-lbl">Chasing Win Rate</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-title">Run Scoring Trend by Season</div>
+      <div class="chart-sub">Average runs per match — IPL is getting more explosive every year</div>
+      <div class="chart-wrap"><canvas id="seasonRunsChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Sixes per Match — Season Evolution</div>
+      <div class="chart-sub">Boundary hitting intensity across 19 seasons</div>
+      <div class="chart-wrap"><canvas id="seasonSixesChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">Over-by-Over Run Rate Profile</div>
+    <div class="chart-sub">How run-scoring accelerates across 20 overs — the T20 scoring curve</div>
+    <div class="chart-wrap"><canvas id="overChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: TOSS ═══════ -->
+<div class="page" id="page-toss">
+  <div class="kpi-row">
+    <div class="kpi gold"><div class="kpi-val">51.5%</div><div class="kpi-lbl">Toss Winner Wins Match</div></div>
+    <div class="kpi red"><div class="kpi-val">48.5%</div><div class="kpi-lbl">Toss Loser Wins Match</div></div>
+    <div class="kpi teal"><div class="kpi-val">45.4%</div><div class="kpi-lbl">Bat First Win Rate</div></div>
+    <div class="kpi green"><div class="kpi-val">54.6%</div><div class="kpi-lbl">Chase Win Rate</div></div>
+    <div class="kpi purple"><div class="kpi-val">~75%</div><div class="kpi-lbl">Captains Choose Field (2022+)</div></div>
+  </div>
+
+  <div class="insight-box">
+    <p>🔍 <strong>Analyst Verdict:</strong> The toss provides a mere <strong>1.5% statistical edge</strong> — indistinguishable from random chance across 1,194 matches. The real insight: toss winners who chose to <strong>field first won 54.6%</strong> of matches vs only 45.4% when choosing to bat. The modern IPL captain's playbook is unambiguous — <strong>win the toss, choose to chase</strong>.</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-title">Toss Winner vs Loser Win Rate</div>
+      <div class="chart-sub">Barely above a coin flip — the toss is overrated</div>
+      <div class="chart-wrap"><canvas id="tossWinChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Toss Decision Impact on Win %</div>
+      <div class="chart-sub">Fielding first is clearly the dominant strategy</div>
+      <div class="chart-wrap"><canvas id="tossDecChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">Toss Decision Trend by Season</div>
+    <div class="chart-sub">The shift from bat-first to field-first across IPL history</div>
+    <div class="chart-wrap" style="max-height:280px"><canvas id="tossSeasonChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: PHASES ═══════ -->
+<div class="page" id="page-phases">
+  <div class="phase-cards">
+    <div class="phase-card pp">
+      <div class="ph-name">⚡ Powerplay (Ov 1–6)</div>
+      <div class="ph-row"><span class="pl">Winners avg</span><span class="pv">48.4 runs <span class="ph-gap pos">+5.8</span></span></div>
+      <div class="ph-row"><span class="pl">Losers avg</span><span class="pv">42.6 runs</span></div>
+      <div class="ph-row"><span class="pl">Winners SR</span><span class="pv">134.6 <span class="ph-gap pos">+16.2</span></span></div>
+      <div class="ph-row"><span class="pl">Winners wickets</span><span class="pv">1.11 lost</span></div>
+      <div class="ph-row"><span class="pl">Losers wickets</span><span class="pv">1.77 lost</span></div>
+    </div>
+    <div class="phase-card mid">
+      <div class="ph-name">🔄 Middle Overs (7–15)</div>
+      <div class="ph-row"><span class="pl">Winners avg</span><span class="pv">71.2 runs <span class="ph-gap pos">+7.7</span></span></div>
+      <div class="ph-row"><span class="pl">Losers avg</span><span class="pv">63.5 runs</span></div>
+      <div class="ph-row"><span class="pl">Winners SR</span><span class="pv">134.7 <span class="ph-gap pos">+16.3</span></span></div>
+      <div class="ph-row"><span class="pl">Winners wickets</span><span class="pv">1.87 lost</span></div>
+      <div class="ph-row"><span class="pl">Losers wickets</span><span class="pv">2.75 lost</span></div>
+    </div>
+    <div class="phase-card death">
+      <div class="ph-name">☠️ Death Overs (16–20)</div>
+      <div class="ph-row"><span class="pl">Winners avg</span><span class="pv">44.9 runs <span class="ph-gap pos">+4.1</span></span></div>
+      <div class="ph-row"><span class="pl">Losers avg</span><span class="pv">40.8 runs</span></div>
+      <div class="ph-row"><span class="pl">Winners SR</span><span class="pv">175.6 <span class="ph-gap pos">+32.0</span></span></div>
+      <div class="ph-row"><span class="pl">Winners wickets</span><span class="pv">1.74 lost</span></div>
+      <div class="ph-row"><span class="pl">Losers wickets</span><span class="pv">2.79 lost</span></div>
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <p>🔥 <strong>Death Overs are the Match Decider:</strong> The 32-point strike rate gap (175.6 vs 143.5) in overs 16–20 between winners and losers is the <strong>single strongest predictor of IPL victory</strong> in the dataset. Winners also preserve more wickets (1.74 vs 2.79 lost), giving them extra firepower in the final 5 overs.</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-title">Average Runs per Phase — Winners vs Losers</div>
+      <div class="chart-sub">Run output across all three phases</div>
+      <div class="chart-wrap"><canvas id="phaseRunsChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Strike Rate by Phase — Winners vs Losers</div>
+      <div class="chart-sub">Death overs show the most dramatic separation</div>
+      <div class="chart-wrap"><canvas id="phaseSRChart"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-title">Avg Wickets Lost per Phase</div>
+      <div class="chart-sub">Winners preserve wickets better in every phase</div>
+      <div class="chart-wrap"><canvas id="phaseWicketsChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Boundary % per Phase</div>
+      <div class="chart-sub">Winners hit more boundaries in every phase</div>
+      <div class="chart-wrap"><canvas id="phaseBoundaryChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: BATTERS ═══════ -->
+<div class="page" id="page-batters">
+  <div class="kpi-row">
+    <div class="kpi gold"><div class="kpi-val">V Kohli</div><div class="kpi-lbl">All-Time Runs Leader</div></div>
+    <div class="kpi teal"><div class="kpi-val">9,031</div><div class="kpi-lbl">Kohli Total Runs</div></div>
+    <div class="kpi green"><div class="kpi-val">151.4</div><div class="kpi-lbl">AB de Villiers Best SR</div></div>
+    <div class="kpi red"><div class="kpi-val">354</div><div class="kpi-lbl">CH Gayle Total Sixes</div></div>
+    <div class="kpi purple"><div class="kpi-val">45.7</div><div class="kpi-lbl">KL Rahul Best Average</div></div>
+  </div>
+
+  <div class="search-row">
+    <input class="search-input" id="batterSearch" oninput="filterBatters()" placeholder="🔍 Search batter...">
+    <button class="sort-btn active" id="sortRuns" onclick="sortBatters('runs')">Runs ↓</button>
+    <button class="sort-btn" id="sortSR" onclick="sortBatters('SR')">Strike Rate</button>
+    <button class="sort-btn" id="sortAvg" onclick="sortBatters('average')">Average</button>
+    <button class="sort-btn" id="sortSix" onclick="sortBatters('sixes')">Sixes</button>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:18px;">
+    <div class="chart-card">
+      <div class="chart-title">Top 10 Batters by Total Runs</div>
+      <div class="chart-sub">All-time IPL run-scorers (min 200 balls)</div>
+      <div class="chart-wrap"><canvas id="batterRunsChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Strike Rate vs Average — Scatter</div>
+      <div class="chart-sub">Efficiency vs consistency — bubble = total runs</div>
+      <div class="chart-wrap"><canvas id="batterScatterChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="tbl-card">
+    <div class="tbl-header">
+      <div class="tbl-title">🏏 Batters Leaderboard</div>
+    </div>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Batter</th><th class="r">Runs</th><th class="r">Balls</th><th class="r">Avg</th><th class="r">SR</th><th class="r">4s</th><th class="r">6s</th><th class="r">Matches</th><th class="r">Bdy%</th></tr>
+      </thead>
+      <tbody id="batterTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: BOWLERS ═══════ -->
+<div class="page" id="page-bowlers">
+  <div class="kpi-row">
+    <div class="kpi gold"><div class="kpi-val">YS Chahal</div><div class="kpi-lbl">All-Time Wickets Leader</div></div>
+    <div class="kpi teal"><div class="kpi-val">238</div><div class="kpi-lbl">Chahal Total Wickets</div></div>
+    <div class="kpi green"><div class="kpi-val">6.93</div><div class="kpi-lbl">SP Narine Best Economy</div></div>
+    <div class="kpi red"><div class="kpi-val">41.2%</div><div class="kpi-lbl">B Kumar Best Dot Ball %</div></div>
+    <div class="kpi purple"><div class="kpi-val">18.54</div><div class="kpi-lbl">SL Malinga Best Avg</div></div>
+  </div>
+
+  <div class="search-row">
+    <input class="search-input" id="bowlerSearch" oninput="filterBowlers()" placeholder="🔍 Search bowler...">
+    <button class="sort-btn active" id="sortWkts" onclick="sortBowlers('wickets')">Wickets ↓</button>
+    <button class="sort-btn" id="sortEco" onclick="sortBowlers('economy')">Economy</button>
+    <button class="sort-btn" id="sortDot" onclick="sortBowlers('dot_pct')">Dot %</button>
+    <button class="sort-btn" id="sortBowlAvg" onclick="sortBowlers('bowling_avg')">Average</button>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:18px;">
+    <div class="chart-card">
+      <div class="chart-title">Top 10 Bowlers by Wickets</div>
+      <div class="chart-sub">All-time IPL wicket-takers (min 20 wickets)</div>
+      <div class="chart-wrap"><canvas id="bowlerWktsChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Economy vs Dot Ball % — Efficiency Map</div>
+      <div class="chart-sub">Lower economy + higher dot% = best bowler</div>
+      <div class="chart-wrap"><canvas id="bowlerScatterChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="tbl-card">
+    <div class="tbl-header">
+      <div class="tbl-title">🎯 Bowlers Leaderboard</div>
+    </div>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Bowler</th><th class="r">Wickets</th><th class="r">Balls</th><th class="r">Economy</th><th class="r">Avg</th><th class="r">Dot%</th><th class="r">Matches</th></tr>
+      </thead>
+      <tbody id="bowlerTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: TEAMS ═══════ -->
+<div class="page" id="page-teams">
+  <div class="kpi-row">
+    <div class="kpi gold"><div class="kpi-val">CSK</div><div class="kpi-lbl">Most Matches Played (261)</div></div>
+    <div class="kpi teal"><div class="kpi-val">MI</div><div class="kpi-lbl">Most Wins (154)</div></div>
+    <div class="kpi green"><div class="kpi-val">62.5%</div><div class="kpi-lbl">Rising Pune Supergiant Best Win%</div></div>
+    <div class="kpi red"><div class="kpi-val">GT</div><div class="kpi-lbl">Best Established Team Win% (61.4%)</div></div>
+    <div class="kpi purple"><div class="kpi-val">15</div><div class="kpi-lbl">Total Franchises Analysed</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-title">Team Win % (All-Time)</div>
+      <div class="chart-sub">Franchises ranked by winning percentage</div>
+      <div class="chart-wrap" style="max-height:360px"><canvas id="teamWinPctChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Wins vs Matches Played</div>
+      <div class="chart-sub">Volume vs efficiency — bubble chart</div>
+      <div class="chart-wrap" style="max-height:360px"><canvas id="teamBubbleChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════ DATA ═══════
+const DATA = {"team_stats": [{"team": "Rising Pune Supergiant", "matches": 16, "wins": 10, "win_pct": 62.5}, {"team": "Gujarat Titans", "matches": 70, "wins": 43, "win_pct": 61.42857142857143}, {"team": "Royal Challengers Bengaluru", "matches": 40, "wins": 24, "win_pct": 60.0}, {"team": "Chennai Super Kings", "matches": 261, "wins": 147, "win_pct": 56.32183908045977}, {"team": "Mumbai Indians", "matches": 287, "wins": 154, "win_pct": 53.65853658536586}, {"team": "Kolkata Knight Riders", "matches": 273, "wins": 137, "win_pct": 50.18315018315018}, {"team": "Rajasthan Royals", "matches": 244, "wins": 120, "win_pct": 49.18032786885246}, {"team": "Sunrisers Hyderabad", "matches": 206, "wins": 100, "win_pct": 48.54368932038835}, {"team": "Lucknow Super Giants", "matches": 68, "wins": 33, "win_pct": 48.529411764705884}, {"team": "Punjab Kings", "matches": 83, "wins": 40, "win_pct": 48.19277108433735}, {"team": "Delhi Capitals", "matches": 115, "wins": 55, "win_pct": 47.82608695652174}, {"team": "Royal Challengers Bangalore", "matches": 240, "wins": 114, "win_pct": 47.5}, {"team": "Kings XI Punjab", "matches": 190, "wins": 85, "win_pct": 44.73684210526316}, {"team": "Gujarat Lions", "matches": 30, "wins": 13, "win_pct": 43.333333333333336}, {"team": "Kochi Tuskers Kerala", "matches": 14, "wins": 6, "win_pct": 42.857142857142854}], "season_runs": [{"season": "2007/08", "total_runs": 16809, "matches": 58, "sixes": 623, "fours": 1703, "wickets": 690, "avg_runs_per_match": 289.8103448275862, "sixes_per_match": 10.741379310344827}, {"season": "2009", "total_runs": 15376, "matches": 57, "sixes": 508, "fours": 1321, "wickets": 698, "avg_runs_per_match": 269.7543859649123, "sixes_per_match": 8.912280701754385}, {"season": "2009/10", "total_runs": 17754, "matches": 60, "sixes": 587, "fours": 1709, "wickets": 725, "avg_runs_per_match": 295.9, "sixes_per_match": 9.783333333333333}, {"season": "2011", "total_runs": 19928, "matches": 73, "sixes": 639, "fours": 1916, "wickets": 813, "avg_runs_per_match": 272.986301369863, "sixes_per_match": 8.753424657534246}, {"season": "2012", "total_runs": 21323, "matches": 74, "sixes": 733, "fours": 1911, "wickets": 858, "avg_runs_per_match": 288.14864864864865, "sixes_per_match": 9.905405405405405}, {"season": "2013", "total_runs": 21487, "matches": 76, "sixes": 681, "fours": 2054, "wickets": 912, "avg_runs_per_match": 282.7236842105263, "sixes_per_match": 8.960526315789474}, {"season": "2014", "total_runs": 17943, "matches": 60, "sixes": 715, "fours": 1563, "wickets": 674, "avg_runs_per_match": 299.05, "sixes_per_match": 11.916666666666666}, {"season": "2015", "total_runs": 17427, "matches": 59, "sixes": 692, "fours": 1611, "wickets": 691, "avg_runs_per_match": 295.3728813559322, "sixes_per_match": 11.728813559322035}, {"season": "2016", "total_runs": 17962, "matches": 60, "sixes": 639, "fours": 1633, "wickets": 666, "avg_runs_per_match": 299.3666666666667, "sixes_per_match": 10.65}, {"season": "2017", "total_runs": 17920, "matches": 59, "sixes": 706, "fours": 1612, "wickets": 711, "avg_runs_per_match": 303.728813559322, "sixes_per_match": 11.966101694915254}, {"season": "2018", "total_runs": 19098, "matches": 60, "sixes": 872, "fours": 1652, "wickets": 722, "avg_runs_per_match": 318.3, "sixes_per_match": 14.533333333333333}, {"season": "2019", "total_runs": 18607, "matches": 60, "sixes": 786, "fours": 1655, "wickets": 685, "avg_runs_per_match": 310.1166666666667, "sixes_per_match": 13.1}, {"season": "2020/21", "total_runs": 18566, "matches": 60, "sixes": 736, "fours": 1589, "wickets": 677, "avg_runs_per_match": 309.43333333333334, "sixes_per_match": 12.266666666666667}, {"season": "2021", "total_runs": 17727, "matches": 60, "sixes": 687, "fours": 1551, "wickets": 717, "avg_runs_per_match": 295.45, "sixes_per_match": 11.45}, {"season": "2022", "total_runs": 23052, "matches": 74, "sixes": 1062, "fours": 2020, "wickets": 912, "avg_runs_per_match": 311.5135135135135, "sixes_per_match": 14.35135135135135}, {"season": "2023", "total_runs": 24428, "matches": 74, "sixes": 1124, "fours": 2175, "wickets": 916, "avg_runs_per_match": 330.1081081081081, "sixes_per_match": 15.18918918918919}, {"season": "2024", "total_runs": 24657, "matches": 71, "sixes": 1261, "fours": 2175, "wickets": 883, "avg_runs_per_match": 347.28169014084506, "sixes_per_match": 17.760563380281692}, {"season": "2025", "total_runs": 25309, "matches": 74, "sixes": 1302, "fours": 2263, "wickets": 873, "avg_runs_per_match": 342.0135135135135, "sixes_per_match": 17.594594594594593}, {"season": "2026", "total_runs": 17385, "matches": 50, "sixes": 940, "fours": 1548, "wickets": 592, "avg_runs_per_match": 347.7, "sixes_per_match": 18.8}], "top15_bat": [{"batter": "V Kohli", "runs": 9031, "balls": 6736, "average": 39.8, "SR": 134.1, "fours": 815, "sixes": 306, "matches": 269, "boundary_pct": 56.4}, {"batter": "RG Sharma", "runs": 7224, "balls": 5443, "average": 29.9, "SR": 132.7, "fours": 655, "sixes": 315, "matches": 271, "boundary_pct": 62.4}, {"batter": "S Dhawan", "runs": 6736, "balls": 5304, "average": 34.9, "SR": 127.0, "fours": 763, "sixes": 152, "matches": 221, "boundary_pct": 58.8}, {"batter": "DA Warner", "runs": 6537, "balls": 4680, "average": 39.9, "SR": 139.7, "fours": 661, "sixes": 233, "matches": 184, "boundary_pct": 61.8}, {"batter": "KL Rahul", "runs": 5670, "balls": 4081, "average": 45.7, "SR": 138.9, "fours": 497, "sixes": 231, "matches": 145, "boundary_pct": 59.5}, {"batter": "SK Raina", "runs": 5513, "balls": 4025, "average": 32.2, "SR": 137.0, "fours": 504, "sixes": 203, "matches": 200, "boundary_pct": 58.7}, {"batter": "MS Dhoni", "runs": 5409, "balls": 3935, "average": 38.1, "SR": 137.5, "fours": 375, "sixes": 261, "matches": 241, "boundary_pct": 56.7}, {"batter": "AM Rahane", "runs": 5235, "balls": 4177, "average": 30.3, "SR": 125.3, "fours": 527, "sixes": 134, "matches": 192, "boundary_pct": 55.6}, {"batter": "AB de Villiers", "runs": 5148, "balls": 3400, "average": 39.6, "SR": 151.4, "fours": 412, "sixes": 250, "matches": 170, "boundary_pct": 61.1}, {"batter": "SV Samson", "runs": 5094, "balls": 3606, "average": 31.8, "SR": 141.3, "fours": 420, "sixes": 240, "matches": 181, "boundary_pct": 61.2}, {"batter": "CH Gayle", "runs": 4956, "balls": 3331, "average": 39.3, "SR": 148.8, "fours": 407, "sixes": 354, "matches": 141, "boundary_pct": 75.7}, {"batter": "RV Uthappa", "runs": 4942, "balls": 3784, "average": 27.5, "SR": 130.6, "fours": 480, "sixes": 182, "matches": 197, "boundary_pct": 60.9}, {"batter": "KD Karthik", "runs": 4824, "balls": 3570, "average": 26.2, "SR": 135.1, "fours": 462, "sixes": 161, "matches": 233, "boundary_pct": 58.3}, {"batter": "F du Plessis", "runs": 4763, "balls": 3506, "average": 35.0, "SR": 135.9, "fours": 439, "sixes": 174, "matches": 147, "boundary_pct": 58.8}, {"batter": "SA Yadav", "runs": 4487, "balls": 3023, "average": 33.5, "SR": 148.4, "fours": 475, "sixes": 172, "matches": 161, "boundary_pct": 65.3}], "top15_bowl": [{"bowler": "YS Chahal", "wickets": 238, "balls": 3971, "economy": 8.16, "bowling_avg": 22.7, "dot_pct": 32.76, "matches": 181}, {"bowler": "B Kumar", "wickets": 231, "balls": 4456, "economy": 7.87, "bowling_avg": 25.29, "dot_pct": 41.2, "matches": 200}, {"bowler": "SP Narine", "wickets": 223, "balls": 4540, "economy": 6.93, "bowling_avg": 23.52, "dot_pct": 38.17, "matches": 195}, {"bowler": "DJ Bravo", "wickets": 207, "balls": 3120, "economy": 8.53, "bowling_avg": 21.43, "dot_pct": 31.99, "matches": 158}, {"bowler": "JJ Bumrah", "wickets": 207, "balls": 3581, "economy": 7.53, "bowling_avg": 21.72, "dot_pct": 39.96, "matches": 155}, {"bowler": "R Ashwin", "wickets": 205, "balls": 4710, "economy": 7.29, "bowling_avg": 27.91, "dot_pct": 34.1, "matches": 217}, {"bowler": "PP Chawla", "wickets": 201, "balls": 3850, "economy": 8.07, "bowling_avg": 25.77, "dot_pct": 34.42, "matches": 191}, {"bowler": "SL Malinga", "wickets": 188, "balls": 2827, "economy": 7.4, "bowling_avg": 18.54, "dot_pct": 40.47, "matches": 122}, {"bowler": "RA Jadeja", "wickets": 186, "balls": 4188, "economy": 7.76, "bowling_avg": 29.13, "dot_pct": 31.76, "matches": 233}, {"bowler": "A Mishra", "wickets": 183, "balls": 3371, "economy": 7.46, "bowling_avg": 22.91, "dot_pct": 35.15, "matches": 162}, {"bowler": "Rashid Khan", "wickets": 177, "balls": 3424, "economy": 7.32, "bowling_avg": 23.6, "dot_pct": 35.66, "matches": 146}, {"bowler": "Sandeep Sharma", "wickets": 169, "balls": 3145, "economy": 8.23, "bowling_avg": 25.54, "dot_pct": 38.22, "matches": 141}, {"bowler": "HV Patel", "wickets": 168, "balls": 2482, "economy": 9.1, "bowling_avg": 22.4, "dot_pct": 32.39, "matches": 120}, {"bowler": "UT Yadav", "wickets": 163, "balls": 3056, "economy": 8.72, "bowling_avg": 27.25, "dot_pct": 38.81, "matches": 147}, {"bowler": "Harbhajan Singh", "wickets": 161, "balls": 3416, "economy": 7.2, "bowling_avg": 25.47, "dot_pct": 36.97, "matches": 160}], "over_stats": [{"over": 0, "runs": 14209, "balls": 14757, "wickets": 523, "sixes": 265, "fours": 1937, "run_rate": 5.777190485871111, "wicket_rate": 0.212644846513519}, {"over": 1, "runs": 17078, "balls": 14581, "wickets": 572, "sixes": 491, "fours": 2265, "run_rate": 7.02750154310404, "wicket_rate": 0.23537480282559498}, {"over": 2, "runs": 19279, "balls": 14580, "wickets": 607, "sixes": 661, "fours": 2473, "run_rate": 7.933744855967078, "wicket_rate": 0.24979423868312756}, {"over": 3, "runs": 19980, "balls": 14574, "wickets": 603, "sixes": 720, "fours": 2513, "run_rate": 8.225607245780155, "wicket_rate": 0.24825030876904075}, {"over": 4, "runs": 20122, "balls": 14563, "wickets": 640, "sixes": 759, "fours": 2474, "run_rate": 8.290324795715168, "wicket_rate": 0.2636819336675136}, {"over": 5, "runs": 20083, "balls": 14535, "wickets": 588, "sixes": 745, "fours": 2445, "run_rate": 8.290196078431372, "wicket_rate": 0.24272445820433436}, {"over": 6, "runs": 16053, "balls": 14517, "wickets": 502, "sixes": 473, "fours": 1176, "run_rate": 6.634841909485431, "wicket_rate": 0.20748088448026453}, {"over": 7, "runs": 17273, "balls": 14508, "wickets": 535, "sixes": 570, "fours": 1284, "run_rate": 7.143507030603804, "wicket_rate": 0.22125723738626965}, {"over": 8, "runs": 17953, "balls": 14462, "wickets": 598, "sixes": 685, "fours": 1319, "run_rate": 7.448347393168303, "wicket_rate": 0.2480984649426082}, {"over": 9, "runs": 17684, "balls": 14443, "wickets": 556, "sixes": 605, "fours": 1309, "run_rate": 7.346396178079346, "wicket_rate": 0.23097694384823098}, {"over": 10, "runs": 18323, "balls": 14367, "wickets": 642, "sixes": 710, "fours": 1370, "run_rate": 7.652119440384214, "wicket_rate": 0.2681144288995615}, {"over": 11, "runs": 18594, "balls": 14301, "wickets": 625, "sixes": 731, "fours": 1374, "run_rate": 7.801132787916929, "wicket_rate": 0.2622194252150199}, {"over": 12, "runs": 18472, "balls": 14239, "wickets": 664, "sixes": 816, "fours": 1252, "run_rate": 7.783692675047405, "wicket_rate": 0.2797949294192008}, {"over": 13, "runs": 19040, "balls": 14136, "wickets": 705, "sixes": 839, "fours": 1367, "run_rate": 8.081494057724958, "wicket_rate": 0.29923599320882854}, {"over": 14, "runs": 19475, "balls": 13974, "wickets": 767, "sixes": 859, "fours": 1527, "run_rate": 8.361957921854874, "wicket_rate": 0.3293258909403177}, {"over": 15, "runs": 19784, "balls": 13750, "wickets": 829, "sixes": 981, "fours": 1403, "run_rate": 8.633018181818182, "wicket_rate": 0.36174545454545454}, {"over": 16, "runs": 20078, "balls": 13399, "wickets": 868, "sixes": 948, "fours": 1613, "run_rate": 8.990820210463468, "wicket_rate": 0.38868572281513547}, {"over": 17, "runs": 20700, "balls": 12956, "wickets": 1060, "sixes": 1123, "fours": 1594, "run_rate": 9.5862920654523, "wicket_rate": 0.4908922506946588}, {"over": 18, "runs": 20022, "balls": 12066, "wickets": 1093, "sixes": 1130, "fours": 1551, "run_rate": 9.956240676280457, "wicket_rate": 0.5435106911984088}, {"over": 19, "runs": 18556, "balls": 10391, "wickets": 1438, "sixes": 1182, "fours": 1415, "run_rate": 10.714656914637667, "wicket_rate": 0.8303339428351457}]};
+
+// ═══════ CHART DEFAULTS ═══════
+Chart.defaults.color = '#8888AA';
+Chart.defaults.font.family = 'Inter';
+Chart.defaults.plugins.legend.labels.boxWidth = 12;
+
+const GOLD='#FFD700', TEAL='#00E5FF', GREEN='#00FF88', RED='#FF4444',
+      PURPLE='#BB86FC', ORANGE='#FF6B35', PP='#4ECDC4', MID='#FFE66D', DEATH='#FF6B6B';
+
+const gridCfg = { color:'rgba(255,255,255,0.06)' };
+const axCfg = { grid:gridCfg, ticks:{ color:'#7070AA' }, border:{ color:'transparent' } };
+
+function mkChart(id, cfg) {
+  return new Chart(document.getElementById(id).getContext('2d'), cfg);
+}
+
+// ═══════ OVERVIEW CHARTS ═══════
+const sr = DATA.season_runs;
+mkChart('seasonRunsChart', {
+  type:'line',
+  data:{
+    labels: sr.map(d=>d.season),
+    datasets:[{
+      label:'Avg Runs/Match', data: sr.map(d=>+d.avg_runs_per_match.toFixed(1)),
+      borderColor:GOLD, backgroundColor:'rgba(255,215,0,0.1)', fill:true,
+      tension:.4, pointBackgroundColor:GOLD, pointRadius:4, borderWidth:2.5
+    }]
+  },
+  options:{ responsive:true, plugins:{ legend:{display:false} }, scales:{ x:{...axCfg, ticks:{...axCfg.ticks,maxRotation:45}}, y:axCfg } }
+});
+
+mkChart('seasonSixesChart', {
+  type:'bar',
+  data:{
+    labels: sr.map(d=>d.season),
+    datasets:[{
+      label:'Sixes/Match', data: sr.map(d=>+d.sixes_per_match.toFixed(1)),
+      backgroundColor: sr.map((_,i)=>`hsla(${40+i*8},100%,60%,0.8)`),
+      borderRadius:5, borderSkipped:false
+    }]
+  },
+  options:{ responsive:true, plugins:{ legend:{display:false} }, scales:{ x:{...axCfg, ticks:{...axCfg.ticks,maxRotation:45}}, y:axCfg } }
+});
+
+const os = DATA.over_stats;
+mkChart('overChart', {
+  type:'bar',
+  data:{
+    labels: os.map(d=>`Ov ${d.over+1}`),
+    datasets:[
+      { type:'line', label:'Run Rate', data: os.map(d=>+d.run_rate.toFixed(2)),
+        borderColor:GOLD, backgroundColor:'transparent', yAxisID:'y1',
+        tension:.4, pointRadius:3, borderWidth:2.5, pointBackgroundColor:GOLD },
+      { label:'Runs', data: os.map(d=>d.runs),
+        backgroundColor: os.map(d=> d.over<=5?`${PP}99`: d.over<=14?`${MID}99`:`${DEATH}99`),
+        borderRadius:4, borderSkipped:false }
+    ]
+  },
+  options:{
+    responsive:true,
+    plugins:{ legend:{display:true},
+      tooltip:{ callbacks:{ label:ctx => ctx.datasetIndex===0 ? `RR: ${ctx.raw}` : `Runs: ${ctx.raw.toLocaleString()}` } }
+    },
+    scales:{
+      x:{ ...axCfg, ticks:{...axCfg.ticks,maxRotation:45,font:{size:10}} },
+      y:{ ...axCfg, title:{display:true,text:'Total Runs',color:'#7070AA'} },
+      y1:{ ...axCfg, position:'right', grid:{display:false}, title:{display:true,text:'Run Rate',color:GOLD}, ticks:{color:GOLD} }
+    }
+  }
+});
+
+// ═══════ TOSS CHARTS ═══════
+mkChart('tossWinChart', {
+  type:'bar',
+  data:{
+    labels:['Toss Winner','Toss Loser'],
+    datasets:[{ data:[51.5,48.5],
+      backgroundColor:[`${GREEN}CC`,`${RED}CC`], borderColor:[GREEN,RED],
+      borderWidth:2, borderRadius:8, borderSkipped:false }]
+  },
+  options:{
+    indexAxis:'y', responsive:true,
+    plugins:{ legend:{display:false},
+      tooltip:{ callbacks:{ label:ctx=>`Win Rate: ${ctx.raw}%` } } },
+    scales:{
+      x:{ ...axCfg, min:40, max:60, ticks:{callback:v=>v+'%'} },
+      y:{ ...axCfg, ticks:{font:{size:13,weight:'600'}, color:'#E0E0FF'} }
+    }
+  }
+});
+
+mkChart('tossDecChart', {
+  type:'bar',
+  data:{
+    labels:['Chose to BAT','Chose to FIELD'],
+    datasets:[{ data:[45.4,54.6],
+      backgroundColor:[`${ORANGE}CC`,`${PURPLE}CC`], borderColor:[ORANGE,PURPLE],
+      borderWidth:2, borderRadius:8, borderSkipped:false }]
+  },
+  options:{
+    indexAxis:'y', responsive:true,
+    plugins:{ legend:{display:false} },
+    scales:{
+      x:{ ...axCfg, min:35, max:65, ticks:{callback:v=>v+'%'} },
+      y:{ ...axCfg, ticks:{font:{size:13,weight:'600'}, color:'#E0E0FF'} }
+    }
+  }
+});
+
+// Toss season line — compute bat vs field from season_runs proxy using rough meta
+// actual toss decision by season derived from analysis
+const tossSeasData = {
+  seasons: ["2007/08","2009","2009/10","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020/21","2021","2022","2023","2024","2025","2026"],
+  bat:     [26,35,39,24,37,44,18,25,11,10,10,9,26,15,15,21,19,12,9],
+  field:   [32,21,20,48,37,30,41,31,49,48,50,48,30,44,59,52,52,58,39]
+};
+mkChart('tossSeasonChart', {
+  type:'line',
+  data:{
+    labels: tossSeasData.seasons,
+    datasets:[
+      { label:'Chose Bat', data: tossSeasData.bat, borderColor:ORANGE, backgroundColor:'rgba(255,107,53,0.08)',
+        tension:.4, fill:true, pointRadius:4, borderWidth:2 },
+      { label:'Chose Field', data: tossSeasData.field, borderColor:PURPLE, backgroundColor:'rgba(187,134,252,0.08)',
+        tension:.4, fill:true, pointRadius:4, borderWidth:2 }
+    ]
+  },
+  options:{
+    responsive:true,
+    plugins:{ legend:{labels:{color:'#E0E0FF'}} },
+    scales:{
+      x:{ ...axCfg, ticks:{...axCfg.ticks,maxRotation:45} },
+      y:{ ...axCfg, title:{display:true,text:'# Teams',color:'#7070AA'} }
+    }
+  }
+});
+
+// ═══════ PHASE CHARTS ═══════
+const phases = ['Powerplay','Middle','Death'];
+const pw = {Powerplay:{avg_runs:48.4,SR:134.6,avg_wickets:1.11,boundary_pct:21.9},
+            Middle:{avg_runs:71.2,SR:134.7,avg_wickets:1.87,boundary_pct:15.7},
+            Death:{avg_runs:44.9,SR:175.6,avg_wickets:1.74,boundary_pct:24.1}};
+const pl = {Powerplay:{avg_runs:42.6,SR:118.3,avg_wickets:1.77,boundary_pct:18.6},
+            Middle:{avg_runs:63.5,SR:118.4,avg_wickets:2.75,boundary_pct:12.7},
+            Death:{avg_runs:40.8,SR:143.5,avg_wickets:2.79,boundary_pct:17.7}};
+
+function makePhaseChart(id, key, label, fmt, colors) {
+  mkChart(id, {
+    type:'bar',
+    data:{
+      labels:phases,
+      datasets:[
+        { label:'Winners', data:phases.map(p=>pw[p][key]),
+          backgroundColor:colors[0]+'CC', borderColor:colors[0], borderWidth:2, borderRadius:6, borderSkipped:false },
+        { label:'Losers', data:phases.map(p=>pl[p][key]),
+          backgroundColor:colors[1]+'CC', borderColor:colors[1], borderWidth:2, borderRadius:6, borderSkipped:false }
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{ legend:{labels:{color:'#E0E0FF'}} },
+      scales:{
+        x:{ ...axCfg, ticks:{...axCfg.ticks,font:{size:12}} },
+        y:{ ...axCfg, ticks:{callback: v=>fmt?v+fmt:v} }
+      }
+    }
+  });
+}
+makePhaseChart('phaseRunsChart','avg_runs','Avg Runs','',  [GREEN,RED]);
+makePhaseChart('phaseSRChart','SR','Strike Rate','',       [TEAL,ORANGE]);
+makePhaseChart('phaseWicketsChart','avg_wickets','Wickets','',[GREEN,RED]);
+makePhaseChart('phaseBoundaryChart','boundary_pct','Bdy%','%',[GOLD,PURPLE]);
+
+// ═══════ BATTER STATE ═══════
+let batterData = [...DATA.top15_bat];
+let batterSort = 'runs';
+let batterSortDir = -1;
+
+function renderBatterTable() {
+  const q = document.getElementById('batterSearch').value.toLowerCase();
+  let rows = batterData.filter(b => b.batter.toLowerCase().includes(q));
+  const tbody = document.getElementById('batterTableBody');
+  const rankColors=['rank-1','rank-2','rank-3','rank-4','rank-5'];
+  tbody.innerHTML = rows.map((b,i)=>`
+    <tr>
+      <td><span class="rank-badge ${rankColors[i]||''}">${i+1}</span></td>
+      <td><strong>${b.batter}</strong></td>
+      <td class="r" style="color:${GOLD}">${b.runs.toLocaleString()}</td>
+      <td class="r">${b.balls.toLocaleString()}</td>
+      <td class="r" style="color:${TEAL}">${b.average}</td>
+      <td class="r" style="color:${GREEN}">${b.SR}</td>
+      <td class="r">${b.fours}</td>
+      <td class="r">${b.sixes}</td>
+      <td class="r">${b.matches}</td>
+      <td class="r" style="color:${PURPLE}">${b.boundary_pct}%</td>
+    </tr>`).join('');
+}
+
+function filterBatters() { renderBatterTable(); }
+
+function sortBatters(key) {
+  if(batterSort===key) batterSortDir*=-1; else batterSortDir=-1;
+  batterSort=key;
+  batterData.sort((a,b)=>batterSortDir*(b[key]-a[key]));
+  ['sortRuns','sortSR','sortAvg','sortSix'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  const map={runs:'sortRuns',SR:'sortSR',average:'sortAvg',sixes:'sortSix'};
+  if(map[key]) document.getElementById(map[key]).classList.add('active');
+  renderBatterTable();
+  updateBatterCharts();
+}
+
+let batterRunsChart, batterScatterChart;
+function buildBatterCharts() {
+  const top10 = DATA.top15_bat.slice(0,10);
+  batterRunsChart = mkChart('batterRunsChart', {
+    type:'bar',
+    data:{
+      labels: top10.map(b=>b.batter),
+      datasets:[{ data:top10.map(b=>b.runs),
+        backgroundColor: top10.map((_,i)=>[GOLD,PURPLE,TEAL,GREEN,ORANGE,RED,'#FF88AA','#88FFCC','#AAAAFF','#FFAA44'][i]+'BB'),
+        borderRadius:6, borderSkipped:false }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, plugins:{legend:{display:false}},
+      scales:{ x:{...axCfg,ticks:{callback:v=>v.toLocaleString()}}, y:{...axCfg,ticks:{font:{size:11},color:'#E0E0FF'}} }
+    }
+  });
+
+  batterScatterChart = mkChart('batterScatterChart', {
+    type:'scatter',
+    data:{
+      datasets:[{ label:'Batters',
+        data: DATA.top15_bat.map(b=>({x:b.SR, y:b.average, r:Math.sqrt(b.runs/30), label:b.batter})),
+        backgroundColor: DATA.top15_bat.map((_,i)=>`hsla(${i*25},90%,65%,0.75)`),
+        pointRadius: DATA.top15_bat.map(b=>Math.max(6,Math.sqrt(b.runs/20)))
+      }]
+    },
+    options:{
+      responsive:true, plugins:{
+        legend:{display:false},
+        tooltip:{ callbacks:{ label:ctx=>{ const b=DATA.top15_bat[ctx.dataIndex]; return `${b.batter} | SR:${b.SR} Avg:${b.average} Runs:${b.runs}`; } } }
+      },
+      scales:{
+        x:{...axCfg, title:{display:true,text:'Strike Rate',color:'#7070AA'}},
+        y:{...axCfg, title:{display:true,text:'Average',color:'#7070AA'}}
+      }
+    }
+  });
+}
+function updateBatterCharts() {} // charts are static
+renderBatterTable();
+buildBatterCharts();
+
+// ═══════ BOWLER STATE ═══════
+let bowlerData = [...DATA.top15_bowl];
+let bowlerSort = 'wickets';
+let bowlerSortDir = -1;
+
+function renderBowlerTable() {
+  const q = document.getElementById('bowlerSearch').value.toLowerCase();
+  let rows = bowlerData.filter(b => b.bowler.toLowerCase().includes(q));
+  const tbody = document.getElementById('bowlerTableBody');
+  const rankColors=['rank-1','rank-2','rank-3','rank-4','rank-5'];
+  tbody.innerHTML = rows.map((b,i)=>`
+    <tr>
+      <td><span class="rank-badge ${rankColors[i]||''}">${i+1}</span></td>
+      <td><strong>${b.bowler}</strong></td>
+      <td class="r" style="color:${GOLD}">${b.wickets}</td>
+      <td class="r">${b.balls.toLocaleString()}</td>
+      <td class="r" style="color:${GREEN}">${b.economy}</td>
+      <td class="r" style="color:${TEAL}">${b.bowling_avg}</td>
+      <td class="r" style="color:${PURPLE}">${b.dot_pct}%</td>
+      <td class="r">${b.matches}</td>
+    </tr>`).join('');
+}
+function filterBowlers() { renderBowlerTable(); }
+function sortBowlers(key) {
+  if(bowlerSort===key) bowlerSortDir*=-1; else bowlerSortDir = (key==='economy'?1:-1);
+  bowlerSort=key;
+  bowlerData.sort((a,b)=>bowlerSortDir*(b[key]-a[key]));
+  ['sortWkts','sortEco','sortDot','sortBowlAvg'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  const map={wickets:'sortWkts',economy:'sortEco',dot_pct:'sortDot',bowling_avg:'sortBowlAvg'};
+  if(map[key]) document.getElementById(map[key]).classList.add('active');
+  renderBowlerTable();
+}
+
+function buildBowlerCharts() {
+  const top10 = DATA.top15_bowl.slice(0,10);
+  mkChart('bowlerWktsChart', {
+    type:'bar',
+    data:{
+      labels: top10.map(b=>b.bowler),
+      datasets:[{ data:top10.map(b=>b.wickets),
+        backgroundColor: top10.map((_,i)=>[GOLD,PURPLE,TEAL,GREEN,ORANGE,RED,'#FF88AA','#88FFCC','#AAAAFF','#FFAA44'][i]+'BB'),
+        borderRadius:6, borderSkipped:false }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, plugins:{legend:{display:false}},
+      scales:{ x:axCfg, y:{...axCfg,ticks:{font:{size:11},color:'#E0E0FF'}} }
+    }
+  });
+
+  mkChart('bowlerScatterChart', {
+    type:'scatter',
+    data:{
+      datasets:[{ label:'Bowlers',
+        data: DATA.top15_bowl.map(b=>({x:b.economy, y:b.dot_pct})),
+        backgroundColor: DATA.top15_bowl.map((_,i)=>`hsla(${160+i*15},80%,60%,0.75)`),
+        pointRadius: DATA.top15_bowl.map(b=>Math.max(6,Math.sqrt(b.wickets/2)))
+      }]
+    },
+    options:{
+      responsive:true, plugins:{
+        legend:{display:false},
+        tooltip:{ callbacks:{ label:ctx=>{ const b=DATA.top15_bowl[ctx.dataIndex]; return `${b.bowler} | Eco:${b.economy} Dot%:${b.dot_pct} Wkts:${b.wickets}`; } } }
+      },
+      scales:{
+        x:{...axCfg, title:{display:true,text:'Economy Rate ←lower=better',color:'#7070AA'}},
+        y:{...axCfg, title:{display:true,text:'Dot Ball % ↑higher=better',color:'#7070AA'}}
+      }
+    }
+  });
+}
+renderBowlerTable();
+buildBowlerCharts();
+
+// ═══════ TEAM CHARTS ═══════
+const ts = DATA.team_stats;
+const teamColors = [GOLD,PURPLE,TEAL,GREEN,ORANGE,RED,'#FF88AA','#88FFCC','#AAAAFF','#FFAA44','#44FFAA','#AA44FF','#FF4444','#44AAFF','#FFFF44'];
+mkChart('teamWinPctChart', {
+  type:'bar',
+  data:{
+    labels: ts.map(t=>t.team),
+    datasets:[{ data:ts.map(t=>+t.win_pct.toFixed(1)),
+      backgroundColor: ts.map((_,i)=>teamColors[i]+'BB'),
+      borderRadius:5, borderSkipped:false }]
+  },
+  options:{
+    indexAxis:'y', responsive:true, plugins:{legend:{display:false}},
+    scales:{
+      x:{...axCfg, min:30, max:75, ticks:{callback:v=>v+'%'}},
+      y:{...axCfg, ticks:{font:{size:10},color:'#E0E0FF'}}
+    }
+  }
+});
+
+mkChart('teamBubbleChart', {
+  type:'bubble',
+  data:{
+    datasets: ts.map((t,i)=>({
+      label:t.team,
+      data:[{x:t.matches, y:+t.win_pct.toFixed(1), r:Math.max(6,Math.sqrt(t.wins*1.5))}],
+      backgroundColor: teamColors[i]+'99',
+      borderColor: teamColors[i]
+    }))
+  },
+  options:{
+    responsive:true,
+    plugins:{ legend:{display:false},
+      tooltip:{ callbacks:{ label:ctx=>`${ctx.dataset.label} | ${ts[ctx.datasetIndex].matches} matches, ${ts[ctx.datasetIndex].wins} wins (${ctx.raw.y}%)` } }
+    },
+    scales:{
+      x:{...axCfg, title:{display:true,text:'Matches Played',color:'#7070AA'}},
+      y:{...axCfg, title:{display:true,text:'Win %',color:'#7070AA'}}
+    }
+  }
+});
+
+// ═══════ NAV ═══════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+</script>
+</body>
+</html>
